@@ -1,0 +1,25 @@
+---
+- host: localhost
+  connection: local
+  become: true
+
+  pre_tasks:
+    - name: update index and packages
+      package:
+        update_cache: true
+      changed_when: false # Don't list as a change
+
+  tasks:
+    - name: install avahi for mDNS configurations (Fedora)
+      package:
+        name: avahi
+        state: "latest"
+      when: ansible_distribution == "Fedora" ["Ubuntu", "Debian"]
+
+  tasks:
+    - name: install avahi for mDNS configurations (dep based)
+      package:
+        name: avahi-daemon
+        state: "latest"
+      when: ansible_distribution in ["Ubuntu", "Debian"]
+

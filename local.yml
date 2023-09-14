@@ -4,22 +4,33 @@
   become: true
 
   pre_tasks:
-    - name: update index and packages
+    - name: update package index
       package:
         update_cache: true
-      changed_when: false # Don't list as a change
+      changed_when: false # Don't list as a changed
+
+    - name: Upgrade all packages (RedHat based)
+      dnf:
+        name: "*"
+        state: "latest"
+      when: ansible_os_family == "RedHat"
+
+    - name: Upgrade all packages (Deb based)
+      apt:
+        upgrade: "dist"
+      when: ansible_os_family == "Debian"
+
 
   tasks:
-    - name: install avahi for mDNS configurations (Fedora)
+    - name: install avahi for mDNS configurations (RedHat based)
       package:
         name: avahi
         state: "latest"
-      when: ansible_distribution == "Fedora" ["Ubuntu", "Debian"]
+      when: ansible_os_family == "RedHat"
 
-  tasks:
-    - name: install avahi for mDNS configurations (dep based)
+    - name: install avahi for mDNS configurations (Deb based)
       package:
         name: avahi-daemon
         state: "latest"
-      when: ansible_distribution in ["Ubuntu", "Debian"]
+      when: ansible_os_family == "Debian"
 

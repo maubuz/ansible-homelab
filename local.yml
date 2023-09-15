@@ -17,8 +17,8 @@
 
     - name: Upgrade all packages (Deb based)
       apt:
-        upgrade: yes
-        update_cache: true
+        upgrade: 'yes'
+        # update_cache: true
       when: ansible_os_family == "Debian"
 
 

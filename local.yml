@@ -12,12 +12,13 @@
     - name: Upgrade all packages (RedHat based)
       dnf:
         name: "*"
-        state: "latest"
+        state: latest
       when: ansible_os_family == "RedHat"
 
     - name: Upgrade all packages (Deb based)
       apt:
-        upgrade: "dist"
+        upgrade: yes
+        update_cache: true
       when: ansible_os_family == "Debian"
 
 
@@ -25,12 +26,12 @@
     - name: install avahi for mDNS configurations (RedHat based)
       package:
         name: avahi
-        state: "latest"
+        state: latest
       when: ansible_os_family == "RedHat"
 
     - name: install avahi for mDNS configurations (Deb based)
       package:
         name: avahi-daemon
-        state: "latest"
+        state: latest
       when: ansible_os_family == "Debian"
 

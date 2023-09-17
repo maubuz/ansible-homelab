@@ -52,7 +52,6 @@
         groups: root
 
 
-    # TODO: Move key to a dedicated file.
     - name: Add public ssh key for ansible user
       authorized_keys:
         user: "{{ ansible_user_name }}"

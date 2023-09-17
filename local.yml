@@ -3,6 +3,8 @@
   connection: local
   become: true
 
+  vars:
+    ansible_user_name: "ansiblebot"
 
   pre_tasks:
     - name: update package index
@@ -26,8 +28,6 @@
 
   # TODO: Include in bootstrap role
   tasks:
-    vars:
-      ansible_user_name: "ansiblebot"
 
     - name: install avahi for mDNS configurations (RedHat based)
       package:
@@ -54,20 +54,15 @@
 
     # TODO: Move key to a dedicated file.
     - name: Add public ssh key for ansible user
-        authorized_keys:  
-          user: "{{ ansible_user_name }}"
-          state: present
-          key: >
-            ssh-ed25519
-            AAAAC3NzaC1lZDI1NTE5AAAAIDcfhe0usxzgCZKkY54t2YH9aViT5am+dypn2aNP/5SV
-            Ansiblebot Sept 2023
+      authorized_keys:
+        user: "{{ ansible_user_name }}"
+        state: present
+        key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDcfhe0usxzgCZKkY54t2YH9aViT5am+dypn2aNP/5SV Ansiblebot Sept 2023"
 
     - name: Add ansible role to sudoers list
+      copy:
        src: sudoer_ansiblebot 
        dest: "/etc/sudoers.d/{{ ansible_user_name }}"
        owner: root
        group: root
        mode: 0440
-
-
-

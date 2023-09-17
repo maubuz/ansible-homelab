@@ -53,7 +53,7 @@
 
 
     - name: Add public ssh key for ansible user
-      authorized_keys:
+      authorized_key:
         user: "{{ ansible_user_name }}"
         state: present
         key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDcfhe0usxzgCZKkY54t2YH9aViT5am+dypn2aNP/5SV Ansiblebot Sept 2023"

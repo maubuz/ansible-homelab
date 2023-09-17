@@ -50,6 +50,7 @@
         state: present
         password: '!' # disable password
         groups: root
+        shell: /bin/bash  # Otherwise defaults to sh (see /etc/default/useradd)
 
 
     - name: Add public ssh key for ansible user

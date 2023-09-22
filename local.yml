@@ -50,7 +50,7 @@
         state: present
         password: '!' # disable password
         groups: root
-        shell: /bin/bash  # Otherwise defaults to sh (see /etc/default/useradd)
+        shell: /bin/bash  # Avoid default of sh (see SHELL in /etc/default/useradd)
 
 
     - name: Add public ssh key for ansible user
@@ -58,6 +58,7 @@
         user: "{{ ansible_user_name }}"
         state: present
         key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDcfhe0usxzgCZKkY54t2YH9aViT5am+dypn2aNP/5SV Ansiblebot Sept 2023"
+
 
     - name: Add ansible role to sudoers list
       copy:

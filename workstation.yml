@@ -1,4 +1,6 @@
 ---
+# ansible-pull --ask-become-pass -U git@github.com:maubuz/ansible-homelab.git workstation.yml
+
 - hosts: localhost
   connection: local
   become: true
@@ -7,5 +9,21 @@
     - name: Install workstation packages (all linux families)
       package:
         update_cache: true
-        name: input-remapper
+        name:
+          - input-remapper
         state: latest
+
+    - name: Install gnome specific packaes (RedHat based)
+      package:
+        name:
+          - gnome-pomodoro
+        state: latest
+      when: ansible_os_family == "RedHat"
+
+
+    - name: Install gnome specific packaes (Deb based)
+      package:
+        name:
+          - gnome-shell-pomodro
+        state: latest
+      when: ansible_os_family == "Debian"

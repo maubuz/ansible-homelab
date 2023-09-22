@@ -1,0 +1,15 @@
+---
+- hosts: localhost
+  connection: local
+  become: true
+
+  tasks:
+
+    name: Install workstation packages (all linux families)
+    package:
+      update_cache: true
+      name:
+        - input-remapper
+      state: latest
+
+

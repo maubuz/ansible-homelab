@@ -11,6 +11,7 @@
         update_cache: true
         name:
           - input-remapper
+          - gimp
         state: latest
 
     - name: Install gnome specific packaes (RedHat based)

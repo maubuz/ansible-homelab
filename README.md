@@ -10,10 +10,22 @@ In order to run `local.yml` for the first time, the following packages are requi
 
 ## Installation
 
-1. Clone this repository or copy contents of `bash-bootstrap.sh` to a local script.
+1. Install required packages with:
 
-2. Run `bash-bootstrap.sh` in order to:
+   1. APT distro:
 
-    2a. Install requirements listed above
-    2b. Run `ansible-playbook local.yml`
+   ```sh
+   sudo apt update -y && sudo apt install git ansible -y
+   ```
+   2. DNF distro:
 
+     ```sh
+     sudo dnf upgrade -y && sudo dnf install git ansible -y
+     ```
+
+ 2. Use `ansible-pull` to run playbook `local.yml` directly from this repository:
+    ```sh
+    ansible-pull -U https://github.com/maubuz/ansible-homelab.git
+    ```
+
+    

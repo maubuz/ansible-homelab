@@ -14,6 +14,10 @@
           - gimp
           - inkscape
           - vim
+          - fd-find
+          - git-delta
+          - fzf
+          - bat
         state: latest
 
     - name: Install gnome specific packaes (RedHat based)
@@ -28,6 +32,7 @@
       package:
         name:
           - gnome-shell-pomodoro
+          - gnome-tweaks
         state: latest
       when: ansible_os_family == "Debian"
 
@@ -35,6 +40,8 @@
     - name: Install snap packages with sandbox (Ubuntu)
       community.general.snap:
         name:
+          - chromium
+          - chromium-ffmpeg
           - logseq
       when: ansible_facts['distribution'] == "Ubuntu"
       

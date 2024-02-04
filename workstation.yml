@@ -51,3 +51,23 @@
           - nvim
         classic: true
       when: ansible_facts['distribution'] == "Ubuntu"
+
+
+    - name: Install Syncthing
+      package:
+        name: syncthing
+        state: latest
+
+    - name: Enable Syncthing
+      ansible.builtin.systemd_service:
+        name: syncthing
+        enabled: true
+        scope: user
+        state: started
+
+    - name: Start Syncthing
+      ansible.builtin.systemd_service:
+        name: syncthing
+        scope: user
+        state: started
+

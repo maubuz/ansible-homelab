@@ -12,6 +12,8 @@
         name:
           - input-remapper
           - gimp
+          - inkscape
+          - vim
         state: latest
 
     - name: Install gnome specific packaes (RedHat based)
@@ -25,6 +27,6 @@
     - name: Install gnome specific packaes (Deb based)
       package:
         name:
-          - gnome-shell-pomodro
+          - gnome-shell-pomodoro
         state: latest
       when: ansible_os_family == "Debian"

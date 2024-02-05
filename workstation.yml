@@ -18,6 +18,9 @@
           - git-delta
           - fzf
           - bat
+          - stow
+          # includes gcc compiler, make, and other tools. Used for nvim kickstart (tree-sitter et al.)
+          - build-essential
         state: latest
 
     - name: Install gnome specific packaes (RedHat based)
@@ -61,9 +64,8 @@
     - name: Enable Syncthing
       ansible.builtin.systemd_service:
         name: syncthing
-        enabled: true
         scope: user
-        state: started
+        enabled: true
 
     - name: Start Syncthing
       ansible.builtin.systemd_service:

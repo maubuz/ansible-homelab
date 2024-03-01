@@ -21,12 +21,13 @@
           - stow
           - htop
           - v4l-utils
+          - gnome-shell-extension-manager
           # includes gcc compiler, make, and other tools. Used for nvim kickstart (tree-sitter et al.)
           - build-essential
           - xsel
         state: latest
 
-    - name: Install gnome specific packaes (RedHat based)
+    - name: Install specific packaes (RedHat based)
       package:
         name:
           - gnome-pomodoro
@@ -34,7 +35,7 @@
       when: ansible_os_family == "RedHat"
 
 
-    - name: Install gnome specific packaes (Deb based)
+    - name: Install specific packages (Deb based)
       package:
         name:
           - gnome-shell-pomodoro
@@ -61,22 +62,4 @@
           - code  # vscode
         classic: true
       when: ansible_facts['distribution'] == "Ubuntu"
-
-
-    - name: Install Syncthing
-      package:
-        name: syncthing
-        state: latest
-
-    - name: Enable Syncthing
-      ansible.builtin.systemd_service:
-        name: syncthing
-        scope: user
-        enabled: true
-
-    - name: Start Syncthing
-      ansible.builtin.systemd_service:
-        name: syncthing
-        scope: user
-        state: started
 

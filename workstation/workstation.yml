@@ -21,6 +21,7 @@
           - stow
           - htop
           - v4l-utils
+          - ripgrep
           - gnome-shell-extension-manager
           # includes gcc compiler, make, and other tools. Used for nvim kickstart (tree-sitter et al.)
           - build-essential

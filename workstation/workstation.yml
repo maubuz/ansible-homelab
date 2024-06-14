@@ -1,5 +1,5 @@
 ---
-# ansible-pull --ask-become-pass -U git@github.com:maubuz/ansible-homelab.git workstation.yml
+# ansible-pull --ask-become-pass -U https://github.com/maubuz/ansible-homelab.git workstation/workstation.yml
 
 - hosts: localhost
   connection: local

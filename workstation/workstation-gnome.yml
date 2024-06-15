@@ -18,7 +18,7 @@
 
     - name: Ensure pipx is in path
       ansible.builtin.command:
-        cmd: pipx ensurepath
+        cmd: pipx ensurepath && source /home/mau/.bashrc
       become_user: mau
 
     # See https://github.com/essembeh/gnome-extensions-cli

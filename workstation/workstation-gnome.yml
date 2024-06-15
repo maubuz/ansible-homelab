@@ -18,7 +18,7 @@
 
     - name: Ensure pipx is in path
       ansible.builtin.command:
-        cmd: pipx ensurepath && source /home/mau/.bashrc
+        cmd: pipx ensurepath
       become_user: mau
 
     # See https://github.com/essembeh/gnome-extensions-cli
@@ -35,5 +35,5 @@
         # Installing extensions:
         # https://github.com/MajortomVR/simple-timer-extension
         # https://github.com/corecoding/Vitals
-        cmd: gext install simple-timer@majortomvr.github.com system-monitor-next@paradoxxx.zero.gmail.com just-perfection-desktop@just-perfection
+        cmd: gext --filesystem install simple-timer@majortomvr.github.com system-monitor-next@paradoxxx.zero.gmail.com just-perfection-desktop@just-perfection
       become_user: mau

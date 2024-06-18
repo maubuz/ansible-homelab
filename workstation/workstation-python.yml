@@ -19,20 +19,3 @@
       ansible.builtin.command:
         cmd: pipx ensurepath
       become_user: mau
-
-    # See https://github.com/essembeh/gnome-extensions-cli
-    - name: Install gnome-extension-cli
-      community.general.pipx:
-        name: gnome-extensions-cli
-        executable: /usr/bin/pipx 
-        state: latest
-        system_site_packages: true
-      become_user: mau
-
-    - name: Install gnome extensions with gnome-extension-cli
-      ansible.builtin.command:
-        # Installing extensions:
-        # https://github.com/MajortomVR/simple-timer-extension
-        # https://github.com/corecoding/Vitals
-        cmd: gext install simple-timer@majortomvr.github.com system-monitor-next@paradoxxx.zero.gmail.com just-perfection-desktop@just-perfection
-      become_user: mau

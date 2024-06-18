@@ -35,5 +35,10 @@
         # Installing extensions:
         # https://github.com/MajortomVR/simple-timer-extension
         # https://github.com/corecoding/Vitals
-        cmd: gext --filesystem install simple-timer@majortomvr.github.com system-monitor-next@paradoxxx.zero.gmail.com just-perfection-desktop@just-perfection
+        # Failed to install but was great: system-monitor-next@paradoxxx.zero.gmail.com
+        cmd: >
+          gext --filesystem install simple-timer@majortomvr.github.com
+          just-perfection-desktop@just-perfection
+          emoji-copy@felipeftn
+          pop-shell@system76.com
       become_user: mau

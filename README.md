@@ -28,4 +28,10 @@ In order to run `local.yml` for the first time, the following packages are requi
     ansible-pull -U https://github.com/maubuz/ansible-homelab.git
     ```
 
-    
+### Run playbooks localy
+
+```sh
+# Run locally:
+ansible-playbook --ask-become <playbook-name.yml>
+```
+

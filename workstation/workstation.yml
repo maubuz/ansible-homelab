@@ -1,5 +1,7 @@
 ---
 # ansible-pull --ask-become-pass -U https://github.com/maubuz/ansible-homelab.git workstation/workstation.yml
+# Run locally:
+# ansible-playbook --ask-become <playbook-name.yml>
 
 - hosts: localhost
   connection: local
@@ -23,6 +25,7 @@
           - v4l-utils
           - ripgrep
           - gnome-shell-extension-manager
+          - curl
           # includes gcc compiler, make, and other tools. Used for nvim kickstart (tree-sitter et al.)
           - build-essential
           - xsel
@@ -54,6 +57,7 @@
           - mattermost-desktop
           - spotify
           - typora
+          - multipass
       when: ansible_facts['distribution'] == "Ubuntu"
       
     - name: Install snap packages w/ "classic" privige (Ubuntu)

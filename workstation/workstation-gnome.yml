@@ -41,4 +41,5 @@
           just-perfection-desktop@just-perfection
           emoji-copy@felipeftn
           pop-shell@system76.com
+          stopwatch@aliakseiz.github.com
       become_user: mau

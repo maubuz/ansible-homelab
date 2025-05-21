@@ -3,18 +3,17 @@
 # ansible-pull --ask-become-pass -U git@github.com:maubuz/ansible-homelab.git workstation.yml
 
 # Run locally:
-# ansible-playbook --ask-become <playbook-name.yml>
+# ansible-playbook --ask-become-pass <playbook-name.yml>
 
 - hosts: localhost
   connection: local
-  become_user: mau
+  become: true
   tasks:
 
     - name: Install Syncthing
       package:
         name: syncthing
         state: latest
-      become: true
 
     - name: Enable Syncthing
       ansible.builtin.systemd_service:
@@ -23,13 +22,5 @@
         enabled: true
         state: started
         daemon_reload: true
+      become_user: mau
       become: no
-
-    # - name: Start Syncthing
-    #   ansible.builtin.systemd_service:
-    #     name: syncthing
-    #     scope: user
-    #     state: started
-    #   become_user: mau
-    #   become: no
-    #

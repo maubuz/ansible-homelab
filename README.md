@@ -23,12 +23,20 @@ In order to run `local.yml` for the first time, the following packages are requi
      sudo dnf upgrade -y && sudo dnf install git ansible -y
      ```
 
- 2. Use `ansible-pull` to run playbook `local.yml` directly from this repository:
+ 2. Use `ansible-pull` to run the default playbook `local.yml` directly from this repository:
     ```sh
     ansible-pull -U https://github.com/maubuz/ansible-homelab.git
     ```
+    or run a specific playbook:
+    ```sh
+    ansible-pull -U https://github.com/maubuz/ansible-homelab.git workstation/workstation.yml
+    ```
 
 ### Run playbooks localy
+
+1. Clone repository and `cd` into this repository.
+
+2. Run playbook.
 
 ```sh
 # Run locally:

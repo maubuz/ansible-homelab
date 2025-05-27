@@ -1,0 +1,70 @@
+---
+# ansible-pull --ask-become-pass -U https://github.com/maubuz/ansible-homelab.git workstation/workstation.yml
+# Run locally:
+# ansible-playbook --ask-become <playbook-name.yml>
+
+- hosts: localhost
+  connection: local
+  become: true
+
+  tasks:
+    - name: Install workstation packages (all linux families)
+      package:
+        update_cache: true
+        name:
+          - input-remapper
+          - gimp
+          - inkscape
+          - vim
+          - fd-find
+          - git-delta
+          - fzf
+          - bat
+          - stow
+          - htop
+          - v4l-utils
+          - ripgrep
+          - gnome-shell-extension-manager
+          - curl
+          # includes gcc compiler, make, and other tools. Used for nvim kickstart (tree-sitter et al.)
+          - build-essential
+          - xsel
+        state: latest
+
+    - name: Install specific packaes (RedHat based)
+      package:
+        name:
+          - gnome-pomodoro
+        state: latest
+      when: ansible_os_family == "RedHat"
+
+
+    - name: Install specific packages (Deb based)
+      package:
+        name:
+          - gnome-shell-pomodoro
+          - gnome-tweaks
+        state: latest
+      when: ansible_os_family == "Debian"
+
+
+    - name: Install snap packages with sandbox (Ubuntu)
+      community.general.snap:
+        name:
+          - chromium
+          - chromium-ffmpeg
+          - logseq
+          - mattermost-desktop
+          - spotify
+          - typora
+          - multipass
+      when: ansible_facts['distribution'] == "Ubuntu"
+      
+    - name: Install snap packages w/ "classic" privige (Ubuntu)
+      community.general.snap:
+        name:
+          - nvim
+          - code  # vscode
+        classic: true
+      when: ansible_facts['distribution'] == "Ubuntu"
+

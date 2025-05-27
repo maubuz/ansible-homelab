@@ -1,0 +1,43 @@
+---
+- name: Install WezTerm
+  hosts: localhost
+  become: true
+  vars:
+    wezterm_gpg_key_url: https://apt.fury.io/wez/gpg.key
+    wezterm_gpg_key_path: /usr/share/keyrings/wezterm-fury.gpg
+    wezterm_repo_file: /etc/apt/sources.list.d/wezterm.list
+    wezterm_repo_content: deb [signed-by=/usr/share/keyrings/wezterm-fury.gpg] https://apt.fury.io/wez/
+      * *
+  tasks:
+    - name: Download WezTerm GPG key
+      ansible.builtin.get_url:
+        url: '{{ wezterm_gpg_key_url }}'
+        dest: /tmp/wezterm.gpg
+        mode: '0644'
+      tags: setup
+    - name: Convert GPG key to APT-compatible format
+      ansible.builtin.command:
+        cmd: gpg --yes --dearmor -o {{ wezterm_gpg_key_path }} /tmp/wezterm.gpg
+      args:
+        creates: '{{ wezterm_gpg_key_path }}'
+      tags: setup
+    - name: Add WezTerm APT repository
+      ansible.builtin.copy:
+        dest: '{{ wezterm_repo_file }}'
+        content: '{{ wezterm_repo_content }}'
+        mode: '0644'
+      tags: setup
+    - name: Update APT cache
+      ansible.builtin.apt:
+        update_cache: true
+      tags: install
+    - name: Install WezTerm
+      ansible.builtin.apt:
+        name: wezterm
+        state: present
+      tags: install
+    - name: Remove temporary GPG key file
+      ansible.builtin.file:
+        path: /tmp/wezterm.gpg
+        state: absent
+      tags: cleanup

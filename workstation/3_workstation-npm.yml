@@ -1,0 +1,23 @@
+---
+- name: Install NVM and NPM LTS
+  hosts: localhost
+  become: false
+  vars:
+    nvm_install_url: https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh
+    nvm_dir: '{{ ansible_env.HOME }}/.nvm'
+
+  tasks:
+    - name: Install nvm
+      ansible.builtin.shell: >
+        curl -o- {{ nvm_install_url }}
+        | bash
+      args:
+        creates: '{{ ansible_env.HOME }}/.nvm/nvm.sh'
+
+    - name: Install Node.js LTS using NVM
+      ansible.builtin.shell:
+        cmd: export NVM_DIR="{{ nvm_dir }}" && [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+          && nvm install --lts
+        executable: /bin/bash
+      environment:
+        NVM_DIR: '{{ nvm_dir }}'

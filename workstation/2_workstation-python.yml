@@ -1,21 +1,23 @@
 ---
 # ansible-pull --ask-become-pass -U git@github.com:maubuz/ansible-homelab.git workstation.yml
-
 - hosts: localhost
   connection: local
   become: true
-
   tasks:
     - name: Install python requirements for gnome extensions
       package:
         update_cache: true
-        name:
-          - python3-pip
-          - pipx
+        name: [python3-pip, pipx, python3-venv]
         state: latest
       when: ansible_facts['distribution'] == "Ubuntu"
 
     - name: Ensure pipx is in path
       ansible.builtin.command:
         cmd: pipx ensurepath
+      become_user: mau
+
+    - name: Install uv with pipx
+      community.general.pipx:
+        name: uv
+        state: latest
       become_user: mau

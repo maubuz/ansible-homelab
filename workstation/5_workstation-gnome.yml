@@ -42,4 +42,5 @@
           emoji-copy@felipeftn
           pop-shell@system76.com
           stopwatch@aliakseiz.github.com
+          Vitals@CoreCoding.com
       become_user: mau

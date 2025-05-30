@@ -57,7 +57,7 @@
           - mattermost-desktop
           - spotify
           - typora
-          - multipass
+          - slack
       when: ansible_facts['distribution'] == "Ubuntu"
       
     - name: Install snap packages w/ "classic" privige (Ubuntu)

@@ -28,7 +28,7 @@
           - curl
           # includes gcc compiler, make, and other tools. Used for nvim kickstart (tree-sitter et al.)
           - build-essential
-          - xsel
+          - xclip
         state: latest
 
     - name: Install specific packaes (RedHat based)

@@ -38,6 +38,8 @@ EXTENSIONS=(
   adbkphmimfcaeonicpmamfddbbnphikh
   # Dark Reader
   eimadpbcbfnmbkopoojfekhnkhdbieeh
+  # Google Docs Offline (for copy/paste functionality)
+  ghbmnnjooekpmoecnnnilnnbdlolhkhi
 )
 
 echo "Installing Brave/Chromium extensions..."

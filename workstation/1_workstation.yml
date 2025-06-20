@@ -30,6 +30,7 @@
           - build-essential
           - xclip
           - flameshot
+          - libreoffice
         state: latest
 
     - name: Install specific packaes (RedHat based)

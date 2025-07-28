@@ -46,6 +46,7 @@
         name:
           - gnome-shell-pomodoro
           - gnome-tweaks
+          - rustup
         state: latest
       when: ansible_os_family == "Debian"
 

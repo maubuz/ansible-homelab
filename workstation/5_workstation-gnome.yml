@@ -1,46 +1,40 @@
 ---
-# ansible-pull --ask-become-pass -U git@github.com:maubuz/ansible-homelab.git workstation.yml
-
-- hosts: localhost
+- name: Install Gnome extensions
+  hosts: localhost
   connection: local
   become: true
-
   tasks:
-    - name: Install python related packages (all linux families)
+    - name: Install python related packages (Ubuntu)
       package:
         update_cache: true
         name:
-          - python3-pip
-          - python-is-python3
-          - pipx
-        state: latest
+            - python3-pip
+            - python-is-python3
+            - pipx
+        state: present
       when: ansible_facts['distribution'] == "Ubuntu"
-
     - name: Ensure pipx is in path
       ansible.builtin.command:
         cmd: pipx ensurepath
       become_user: mau
-
+      changed_when: false
     # See https://github.com/essembeh/gnome-extensions-cli
     - name: Install gnome-extension-cli
       community.general.pipx:
         name: gnome-extensions-cli
-        executable: /usr/bin/pipx 
-        state: latest
+        state: present
         system_site_packages: true
       become_user: mau
-
     - name: Install gnome extensions with gnome-extension-cli
-      ansible.builtin.command:
-        # Installing extensions:
-        # https://github.com/MajortomVR/simple-timer-extension
-        # https://github.com/corecoding/Vitals
-        # Failed to install but was great: system-monitor-next@paradoxxx.zero.gmail.com
-        cmd: >
-          gext --filesystem install simple-timer@majortomvr.github.com
-          just-perfection-desktop@just-perfection
-          emoji-copy@felipeftn
-          pop-shell@system76.com
-          stopwatch@aliakseiz.github.com
-          Vitals@CoreCoding.com
       become_user: mau
+      ansible.builtin.command:
+        cmd: "gext --filesystem install {{ item }}"
+        creates: "{{ ansible_env.HOME }}/.local/share/gnome-shell/extensions/{{ item }}"
+      loop:
+        - simple-timer@majortomvr.github.com   # https://github.com/MajortomVR/simple-timer-extension
+        - emoji-copy@felipeftn
+        - stopwatch@aliakseiz.github.com
+        - Vitals@CoreCoding.com                 # https://github.com/corecoding/Vitals
+      # Unused extensions: just-perfection-desktop@just-perfection
+      # Failed to install but was great: system-monitor-next@paradoxxx.zero.gmail.com
+

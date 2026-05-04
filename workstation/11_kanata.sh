@@ -6,11 +6,12 @@
 # only for the steps that need it.
 #
 # Usage:  ./install-kanata.sh
-#         KANATA_VERSION=v1.11.0 ./install-kanata.sh
+#         KANATA_VERSION=v1.11.0 ./install-kanata.sh  # pin a specific version
 
 set -euo pipefail
 
-KANATA_VERSION="${KANATA_VERSION:-v1.11.0}"
+# Specify specific version tag or default to latest
+KANATA_VERSION="${KANATA_VERSION:-latest}"
 KANATA_BIN="/usr/local/bin/kanata"
 CONFIG_DIR="$HOME/.config/kanata"
 CONFIG_FILE="$CONFIG_DIR/mauMap.kanata.kbd"
@@ -29,15 +30,22 @@ if [[ -r /etc/os-release ]]; then
 fi
 
 echo "[1/5] Installing kanata $KANATA_VERSION to $KANATA_BIN"
-if [[ -x "$KANATA_BIN" ]] && "$KANATA_BIN" --version 2>/dev/null | grep -qF "${KANATA_VERSION#v}"; then
+if [[ "$KANATA_VERSION" != "latest" ]] && \
+   [[ -x "$KANATA_BIN" ]] && \
+   "$KANATA_BIN" --version 2>/dev/null | grep -qF "${KANATA_VERSION#v}"; then
   echo "      already at $KANATA_VERSION, skipping download"
 else
-  tmp=$(mktemp)
-  trap 'rm -f "$tmp"' EXIT
-  curl -fL --retry 3 -o "$tmp" \
-    "https://github.com/jtroo/kanata/releases/download/${KANATA_VERSION}/kanata"
-  sudo install -m 0755 -o root -g root "$tmp" "$KANATA_BIN"
-  rm -f "$tmp"
+  if [[ "$KANATA_VERSION" == "latest" ]]; then
+    DOWNLOAD_URL="https://github.com/jtroo/kanata/releases/latest/download/linux-binaries-x64.zip"
+  else
+    DOWNLOAD_URL="https://github.com/jtroo/kanata/releases/download/${KANATA_VERSION}/linux-binaries-x64.zip"
+  fi
+  tmpdir=$(mktemp -d)
+  trap 'rm -rf "$tmpdir"' EXIT
+  curl -fL --retry 3 -o "$tmpdir/linux-binaries-x64.zip" "$DOWNLOAD_URL"
+  unzip -q "$tmpdir/linux-binaries-x64.zip" kanata -d "$tmpdir"
+  sudo install -m 0755 -o root -g root "$tmpdir/kanata" "$KANATA_BIN"
+  rm -rf "$tmpdir"
   trap - EXIT
 fi
 
@@ -106,13 +114,12 @@ systemctl --user daemon-reload
 cat <<EOF
 
 === Done ===
-Next steps:
+To use:
   1. Drop your config at:  $CONFIG_FILE
   2. Log out and back in   (for input/uinput group membership to apply)
   3. Start the service:    systemctl --user start kanata.service
-     Watch the logs:       journalctl --user -u kanata.service -f
 
-If you use compose-key sequences on GNOME Wayland, set the xkb option once
-(setxkbmap will not stick on Wayland):
+If using compose-key sequences on GNOME Wayland, set the xkb option once
   gsettings set org.gnome.desktop.input-sources xkb-options "['compose:ralt']"
+Note that setxkbmap is not persistent on Wayland
 EOF

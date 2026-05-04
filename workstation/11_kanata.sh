@@ -43,8 +43,8 @@ else
   tmpdir=$(mktemp -d)
   trap 'rm -rf "$tmpdir"' EXIT
   curl -fL --retry 3 -o "$tmpdir/linux-binaries-x64.zip" "$DOWNLOAD_URL"
-  unzip -q "$tmpdir/linux-binaries-x64.zip" kanata -d "$tmpdir"
-  sudo install -m 0755 -o root -g root "$tmpdir/kanata" "$KANATA_BIN"
+  unzip -q "$tmpdir/linux-binaries-x64.zip" kanata_linux_x64 -d "$tmpdir"
+  sudo install -m 0755 -o root -g root "$tmpdir/kanata_linux_x64" "$KANATA_BIN"
   rm -rf "$tmpdir"
   trap - EXIT
 fi

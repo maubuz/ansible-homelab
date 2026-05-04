@@ -12,23 +12,19 @@
       package:
         update_cache: true
         name:
-          - input-remapper
           - gimp
           - inkscape
-          - vim
           - fd-find
           - git-delta
           - fzf
           - bat
           - stow
           - htop
-          - v4l-utils
           - ripgrep
           - gnome-shell-extension-manager
           - curl
           # includes gcc compiler, make, and other tools. Used for nvim kickstart (tree-sitter et al.)
           - build-essential
-          - xclip
           - flameshot
           - libreoffice
         state: latest
@@ -56,10 +52,9 @@
         name:
           - chromium
           - chromium-ffmpeg
-          - logseq
           - mattermost-desktop
           - spotify
-          - typora
+          - marktext
           - slack
           - nordvpn
       when: ansible_facts['distribution'] == "Ubuntu"

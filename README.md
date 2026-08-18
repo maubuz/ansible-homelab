@@ -29,17 +29,164 @@ In order to run `local.yml` for the first time, the following packages are requi
     ```
     or run a specific playbook:
     ```sh
-    ansible-pull -U https://github.com/maubuz/ansible-homelab.git workstation/workstation.yml
+    ansible-pull -U https://github.com/maubuz/ansible-homelab.git workstation/1_workstation.yml
     ```
 
-### Run playbooks localy
+## Running playbooks locally
 
-1. Clone repository and `cd` into this repository.
-
-2. Run playbook.
+Clone the repository, `cd` into it, and use the wrapper — not `ansible-playbook`
+directly:
 
 ```sh
-# Run locally:
-ansible-playbook --ask-become <playbook-name.yml>
+scripts/run-playbook.sh workstation/4_workstation-wezterm.yml
 ```
+
+The playbook argument can be any substring that matches exactly one playbook, so
+these are equivalent:
+
+```sh
+scripts/run-playbook.sh wezterm
+scripts/run-playbook.sh 4_
+```
+
+The wrapper prompts for the sudo password only when the playbook actually
+escalates, forwards any flags through to `ansible-playbook`, and exits with the
+playbook's own exit code.
+
+It takes exactly one playbook per run and rejects a second bare word, since
+`ansible-playbook` would otherwise treat it as another playbook to run. Use `--`
+for the rare positional genuinely meant for ansible:
+
+```sh
+scripts/run-playbook.sh wezterm -- --limit localhost
+```
+
+### Why the wrapper
+
+Running `ansible-playbook` by hand leaves no trace once the terminal scrollback
+is gone, which makes a failed run impossible to review — and impossible to hand
+to someone (or something) else to diagnose. Every run through the wrapper is
+recorded:
+
+| Path | Contents |
+| --- | --- |
+| `logs/<playbook>-<timestamp>.log` | Full console transcript of one run, plus the exact command, host, start/finish times and exit code |
+| `logs/latest.log` | Symlink to the most recent run |
+| `logs/ansible.log` | Rolling, timestamped log of every run ever made from this repo |
+
+`logs/` is gitignored. Delete it whenever it gets noisy; it is recreated on the
+next run.
+
+Two repo-level config files support this and apply to any run started from the
+repository root:
+
+- `ansible.cfg` — enables the log, the `profile_tasks`/`timer` callbacks (per-task
+  durations, so a slow or hung task is obvious in a log read after the fact), and
+  `diff` output so file changes are visible in the transcript.
+- `inventory.ini` — declares `localhost` with a local connection, which keeps
+  "no inventory was parsed" warnings out of every log.
+
+### Dry runs
+
+`--check` predicts changes without making any. Do this first on an unfamiliar or
+edited playbook:
+
+```sh
+scripts/run-playbook.sh --check wezterm
+```
+
+Note that `command`/`shell` tasks cannot be simulated and report as *skipped*, so
+a clean check run is evidence about the module-based tasks only.
+
+### Troubleshooting a run
+
+The transcript is self-contained — the failing task, its module arguments, and
+the module's `stdout`/`stderr` are all in it. When more detail is needed, raise
+verbosity; `-vv` shows each task's full return value:
+
+```sh
+scripts/run-playbook.sh wezterm -vv
+```
+
+To narrow a re-run to the part that failed, use tags where a playbook defines
+them — currently only `4_workstation-wezterm.yml`, with `setup` / `install` /
+`cleanup`:
+
+```sh
+scripts/run-playbook.sh wezterm --tags setup
+```
+
+Inspection flags (`--syntax-check`, `--list-tasks`, `--list-tags`,
+`--list-hosts`) never escalate, so the wrapper skips the password entirely for
+them — they work unattended even on a playbook that uses `become`.
+
+Then hand `logs/latest.log` to whoever is helping — it is the complete record of
+what happened.
+
+### Credentials
+
+The sudo password is prompted for interactively and is never read from, or
+written to, a file. A playbook that escalates therefore needs a terminal: started
+without one, the wrapper exits 2 immediately rather than hanging on a prompt
+nobody can answer.
+
+Playbooks that do not escalate (for example `workstation/3_workstation-npm.yml`,
+which runs `become: false`) need no credentials and run unattended.
+
+### Linting
+
+```sh
+scripts/run-playbook.sh 2c     # installs ansible-lint; needs pipx from 2b
+ansible-lint workstation/ local.yml
+```
+
+Catches the failure modes that are easy to miss by hand: tasks that always
+report `changed`, `become_user` on a task that does not escalate, deprecated
+module names, missing play names.
+
+Ubuntu ships `community.general` and `ansible.posix` inside the ansible
+package's own tree rather than on the default collections search path. The
+system `ansible-playbook` finds them regardless, but `ansible-lint` runs from
+its own virtualenv and does not — it reports every `community.general` task as
+an unresolvable module. `ansible.cfg` sets `collections_path` to cover this, so
+run the linter from the repository root.
+
+### Execution model: interactive vs unattended
+
+The `workstation/` playbooks are **interactive-only**. They are meant to be run
+by the person sitting at the machine, via the wrapper, entering their own sudo
+password. Two of them (`2b_workstation-python.yml`, `5_workstation-gnome.yml`)
+deliberately run `become: false` and resolve paths from
+`ansible_facts.env.HOME`, so they install into the home directory of whoever
+invokes them — correct for a workstation, wrong for a daemon.
+
+Unattended execution is reserved for **server** machines, using the `ansiblebot`
+system account that `local.yml` provisions (passwordless sudo via
+`/etc/sudoers.d/ansiblebot`, plus an authorized SSH key) and driven by
+`ansible-pull`. Nothing in `workstation/` is currently designed for that path:
+run under `ansible-pull` as `ansiblebot`, the two `become: false` playbooks would
+resolve `HOME` to `/home/ansiblebot` and provision the wrong user's desktop.
+
+Before adding a playbook to the unattended set, make sure it either escalates
+explicitly or takes its target user from an inventory variable rather than from
+the invoking user's environment.
+
+### Working with an AI agent
+
+You run the playbook, the agent reads the log:
+
+```sh
+scripts/run-playbook.sh wezterm     # you, in a terminal, entering your password
+```
+
+Then point the agent at `logs/latest.log`. It contains the full output, the
+diffs, the per-task timings and the exit code, so the agent can diagnose a
+failure it never watched — with nothing stored and no standing access granted.
+
+The agent can start unattended runs only for playbooks that never escalate, and
+can always use the inspection flags above on any playbook.
+
+After a run, the agent should verify against the machine (`dpkg -S`,
+`apt-cache policy`, `systemctl status`) rather than trusting the recap alone — a
+task reporting `ok` only means the module was satisfied.
 

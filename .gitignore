@@ -1,0 +1,4 @@
+# Per-run console transcripts and the rolling ansible log
+logs/
+
+*.retry

@@ -5,15 +5,22 @@
   vars:
     wezterm_gpg_key_url: https://apt.fury.io/wez/gpg.key
     wezterm_gpg_key_path: /usr/share/keyrings/wezterm-fury.gpg
-    wezterm_repo_file: /etc/apt/sources.list.d/wezterm.list
-    wezterm_repo_content: deb [signed-by=/usr/share/keyrings/wezterm-fury.gpg] https://apt.fury.io/wez/
-      * *
+    wezterm_repo_uri: https://apt.fury.io/wez/
+    # wezterm-nightly declares "Conflicts: wezterm", so the two channels are
+    # mutually exclusive. Override with -e wezterm_package=wezterm for stable.
+    wezterm_package: wezterm-nightly
   tasks:
+    - name: Check for an existing WezTerm keyring
+      ansible.builtin.stat:
+        path: '{{ wezterm_gpg_key_path }}'
+      register: wezterm_keyring
+      tags: setup
     - name: Download WezTerm GPG key
       ansible.builtin.get_url:
         url: '{{ wezterm_gpg_key_url }}'
         dest: /tmp/wezterm.gpg
         mode: '0644'
+      when: not wezterm_keyring.stat.exists
       tags: setup
     - name: Convert GPG key to APT-compatible format
       ansible.builtin.command:
@@ -21,20 +28,36 @@
       args:
         creates: '{{ wezterm_gpg_key_path }}'
       tags: setup
+    # Manages /etc/apt/sources.list.d/wezterm.sources. "enabled: true" also
+    # revives the source if a release upgrade disabled it.
     - name: Add WezTerm APT repository
-      ansible.builtin.copy:
-        dest: '{{ wezterm_repo_file }}'
-        content: '{{ wezterm_repo_content }}'
-        mode: '0644'
-      tags: setup
-    - name: Update APT cache
-      ansible.builtin.apt:
-        update_cache: true
-      tags: install
-    - name: Install WezTerm
-      ansible.builtin.apt:
+      ansible.builtin.deb822_repository:
         name: wezterm
-        state: present
+        types: deb
+        uris: '{{ wezterm_repo_uri }}'
+        suites: '*'
+        components: '*'
+        signed_by: '{{ wezterm_gpg_key_path }}'
+        enabled: true
+      tags: setup
+    - name: Remove legacy one-line WezTerm repository
+      ansible.builtin.file:
+        path: /etc/apt/sources.list.d/wezterm.list
+        state: absent
+      tags: setup
+    # update_cache is folded in here rather than run as its own task: a bare
+    # "apt: update_cache" always reports changed (it compares the mtime of
+    # /var/lib/apt/periodic/update-success-stamp, which every successful update
+    # touches), so the play could never converge. Here "changed" reflects the
+    # package operation alone, and the refresh is reported as cache_updated.
+    #
+    # state: latest tracks the nightly channel — it publishes most days, so
+    # "present" would pin whatever version happened to land first.
+    - name: Install WezTerm # noqa: package-latest
+      ansible.builtin.apt:
+        name: '{{ wezterm_package }}'
+        state: latest
+        update_cache: true
       tags: install
     - name: Remove temporary GPG key file
       ansible.builtin.file:

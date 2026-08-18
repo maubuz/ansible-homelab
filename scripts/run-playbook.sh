@@ -83,12 +83,31 @@ for arg in "${extra[@]}"; do
   esac
 done
 
+# True when sudo needs no password as a matter of policy: running as root, or a
+# NOPASSWD grant such as the ansiblebot sudoers rule on a server or the default
+# user of an Ubuntu cloud image in the test VM.
+#
+# Deliberately not "sudo -n true", which also succeeds for a few minutes after
+# any sudo because of the timestamp cache. That would skip the prompt on a
+# workstation and then fail part-way through the run when the cache expired.
+# "sudo -n -l" prints the rule itself, and only a real grant contains NOPASSWD;
+# a merely-cached password lists the rule without it.
+sudo_is_passwordless() {
+  [[ $EUID -eq 0 ]] && return 0
+  sudo -n -l 2>/dev/null | grep -q 'NOPASSWD: ALL'
+}
+
 become_args=()
 if ! $inspect_only && grep -qE '^[[:space:]]*become:[[:space:]]*(true|yes)' "$playbook"; then
-  [[ -t 0 ]] || die "$playbook needs sudo but there is no terminal to prompt on.
+  if sudo_is_passwordless; then
+    : # nothing to prompt for, so the run works unattended
+  elif [[ -t 0 ]]; then
+    become_args=(--ask-become-pass)
+  else
+    die "$playbook needs sudo but there is no terminal to prompt on.
 Run it yourself:  scripts/run-playbook.sh $playbook
 then share the log it writes under logs/." 2
-  become_args=(--ask-become-pass)
+  fi
 fi
 
 # ── Run ───────────────────────────────────────────────────────────────────────

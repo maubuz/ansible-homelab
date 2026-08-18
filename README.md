@@ -126,12 +126,69 @@ what happened.
 ### Credentials
 
 The sudo password is prompted for interactively and is never read from, or
-written to, a file. A playbook that escalates therefore needs a terminal: started
-without one, the wrapper exits 2 immediately rather than hanging on a prompt
-nobody can answer.
+written to, a file.
+
+Where a password is actually needed, a playbook that escalates needs a terminal:
+started without one, the wrapper exits 2 immediately rather than hanging on a
+prompt nobody can answer. The wrapper skips the prompt only where sudo needs no
+password as a matter of policy — running as root, or a `NOPASSWD` grant such as
+the `ansiblebot` sudoers rule on a server or the default user of a cloud image
+in the test VM.
+
+That check reads the sudoers policy (`sudo -n -l`), not `sudo -n true`, which
+would also succeed for a few minutes after any sudo because of the timestamp
+cache — skipping the prompt on a workstation and then failing part-way through
+the run once the cache expired.
 
 Playbooks that do not escalate (for example `workstation/3_workstation-npm.yml`,
 which runs `become: false`) need no credentials and run unattended.
+
+### Testing against a clean machine
+
+Every guard these playbooks rely on — `creates:`, "does the keyring exist", "is
+the package installed" — is permanently satisfied on a machine that is already
+provisioned. The first-install paths therefore never run here, which is exactly
+backwards: they are the paths a new machine takes. `scripts/test-vm.sh` runs
+them against a throwaway Ubuntu 26.04 LXD VM instead.
+
+```sh
+scripts/test-vm.sh create
+scripts/test-vm.sh run 2b
+scripts/test-vm.sh run 2b        # second run must report changed=0
+scripts/test-vm.sh destroy
+```
+
+Run each playbook twice: the first run proves the install path works, the second
+proves it converges.
+
+The repository is shared into the VM live over virtiofs rather than copied, so
+there is nothing to re-sync after an edit. Runs inside the VM write their logs
+straight into `logs/` here, next to local ones; the `# host:` line at the top of
+each log says which machine produced it.
+
+Because the share is read-write onto this working tree, a run inside the VM can
+in principle modify tracked files. `git status` after a session is the check.
+
+A VM rather than a container, because `1_workstation.yml` installs snaps and
+snapd is unreliable in an unprivileged container. It is created in LXD's
+`default` project, and every command pins `--project` explicitly so no other
+project is touched.
+
+The VM's resources are declared in the script rather than taken from a named
+profile, so it works on any machine with LXD: 2 CPUs, 4 GiB of RAM and a
+**25 GiB disk**. Size that disk generously — `1_workstation.yml` is the
+constraint. Its ten snaps plus the apt packages reach about 12 GB, which filled
+a 15 GiB disk to 90% and left no headroom for `local.yml`'s system upgrade. The
+pool is thin-provisioned, so 25 GiB is a ceiling rather than space reserved up
+front.
+
+The share behaves like a local directory in the guest — ownership maps both
+ways, executable bits are honoured, throughput matches the VM's own disk — with
+one measured exception: edits made on the host do not fire `inotify` inside the
+VM, so file watchers running there will not see them.
+
+What it cannot test: anything needing a desktop session. Leave
+`5_workstation-gnome.yml` and `6_gnome-no-hotkey.sh` to a real machine.
 
 ### Linting
 

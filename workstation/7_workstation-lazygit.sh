@@ -8,6 +8,15 @@
 # Usage:  ./7_workstation-lazygit.sh
 #         LAZYGIT_VERSION=0.44.1 ./7_workstation-lazygit.sh  # pin a specific version
 
+# Must be executed, not sourced. Sourcing applies the "set -euo pipefail" below
+# to the interactive shell itself: nounset then kills that shell on the first
+# unset variable it meets, which for a shell with a themed prompt is usually
+# immediate. Any "exit" below would close it outright too.
+if [[ ${BASH_SOURCE[0]} != "${0}" ]]; then
+  echo "Run this script, do not source it:  ./${BASH_SOURCE[0]}" >&2
+  return 1
+fi
+
 set -euo pipefail
 
 LAZYGIT_VERSION="${LAZYGIT_VERSION:-latest}"
@@ -19,7 +28,9 @@ if [[ "$LAZYGIT_VERSION" == "latest" ]]; then
 fi
 
 echo "Installing lazygit $LAZYGIT_VERSION to $LAZYGIT_BIN"
-if [[ -x "$LAZYGIT_BIN" ]] && "$LAZYGIT_BIN" --version 2>/dev/null | grep -qF "$LAZYGIT_VERSION"; then
+# Anchored on a word boundary rather than a bare substring: "grep -qF 0.44.1"
+# also matches a installed 0.44.10 and would skip a genuine downgrade/upgrade.
+if [[ -x "$LAZYGIT_BIN" ]] && "$LAZYGIT_BIN" --version 2>/dev/null | grep -qE "version=${LAZYGIT_VERSION//./\\.}(,|$)"; then
   echo "Already at $LAZYGIT_VERSION, skipping download."
 else
   tmpdir=$(mktemp -d)

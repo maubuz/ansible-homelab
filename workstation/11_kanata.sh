@@ -12,6 +12,15 @@
 # The config itself is not installed here — it comes from the dotfiles repo via
 # stow. See 11_kanata.md.
 
+# Must be executed, not sourced. Sourcing applies the "set -euo pipefail" below
+# to the interactive shell itself: nounset then kills that shell on the first
+# unset variable it meets, which for a shell with a themed prompt is usually
+# immediate. Any "exit" below would close it outright too.
+if [[ ${BASH_SOURCE[0]} != "${0}" ]]; then
+  echo "Run this script, do not source it:  ./${BASH_SOURCE[0]}" >&2
+  return 1
+fi
+
 set -euo pipefail
 
 # Pinned by default so re-runs are idempotent. Set to "latest" to track the

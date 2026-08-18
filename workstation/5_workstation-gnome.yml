@@ -1,40 +1,37 @@
 ---
+# Requires pipx, installed by 2b_workstation-python.yml. Run that play first.
+#
+# This play deliberately does not escalate: with become: true, facts are gathered
+# through sudo -H, so ansible_facts.env.HOME would resolve to /root and every
+# path below would point at the wrong home.
 - name: Install Gnome extensions
   hosts: localhost
   connection: local
-  become: true
+  become: false
+  vars:
+    gnome_home: '{{ ansible_facts.env.HOME }}'
+    # pipx shim, called by absolute path: ~/.local/bin is only on PATH in login
+    # shells, and Ansible's command module does not use one.
+    gext_bin: '{{ gnome_home }}/.local/bin/gext'
+    gnome_extensions_dir: '{{ gnome_home }}/.local/share/gnome-shell/extensions'
+    gnome_extensions:
+      - simple-timer@majortomvr.github.com   # https://github.com/MajortomVR/simple-timer-extension
+      - emoji-copy@felipeftn
+      - stopwatch@aliakseiz.github.com
+      - Vitals@CoreCoding.com                 # https://github.com/corecoding/Vitals
+    # Unused extensions: just-perfection-desktop@just-perfection
+    # Failed to install but was great: system-monitor-next@paradoxxx.zero.gmail.com
+
   tasks:
-    - name: Install python related packages (Ubuntu)
-      package:
-        update_cache: true
-        name:
-            - python3-pip
-            - python-is-python3
-            - pipx
-        state: present
-      when: ansible_facts['distribution'] == "Ubuntu"
-    - name: Ensure pipx is in path
-      ansible.builtin.command:
-        cmd: pipx ensurepath
-      become_user: mau
-      changed_when: false
     # See https://github.com/essembeh/gnome-extensions-cli
     - name: Install gnome-extension-cli
       community.general.pipx:
         name: gnome-extensions-cli
         state: present
         system_site_packages: true
-      become_user: mau
-    - name: Install gnome extensions with gnome-extension-cli
-      become_user: mau
-      ansible.builtin.command:
-        cmd: "gext --filesystem install {{ item }}"
-        creates: "{{ ansible_env.HOME }}/.local/share/gnome-shell/extensions/{{ item }}"
-      loop:
-        - simple-timer@majortomvr.github.com   # https://github.com/MajortomVR/simple-timer-extension
-        - emoji-copy@felipeftn
-        - stopwatch@aliakseiz.github.com
-        - Vitals@CoreCoding.com                 # https://github.com/corecoding/Vitals
-      # Unused extensions: just-perfection-desktop@just-perfection
-      # Failed to install but was great: system-monitor-next@paradoxxx.zero.gmail.com
 
+    - name: Install gnome extensions with gnome-extension-cli
+      ansible.builtin.command:
+        cmd: '{{ gext_bin }} --filesystem install {{ item }}'
+        creates: '{{ gnome_extensions_dir }}/{{ item }}'
+      loop: '{{ gnome_extensions }}'

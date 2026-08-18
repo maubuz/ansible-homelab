@@ -1,15 +1,20 @@
 ---
-# ansible-pull --ask-become-pass -U https://github.com/maubuz/ansible-homelab.git workstation/workstation.yml
+# Baseline workstation packages.
+#
+# state: present, not latest — this play means "these packages exist", not
+# "upgrade them now". Whole-system upgrades are local.yml's job, so a run here
+# cannot surprise you with a toolchain bump you did not ask for.
+#
 # Run locally:
-# ansible-playbook --ask-become <playbook-name.yml>
-
-- hosts: localhost
+#   scripts/run-playbook.sh 1_workstation
+- name: Install workstation packages
+  hosts: localhost
   connection: local
   become: true
 
   tasks:
     - name: Install workstation packages (all linux families)
-      package:
+      ansible.builtin.package:
         update_cache: true
         name:
           - gimp
@@ -26,44 +31,50 @@
           # includes gcc compiler, make, and other tools. Used for nvim kickstart (tree-sitter et al.)
           - build-essential
           - flameshot
-          - libreoffice
-        state: latest
+        state: present
 
-    - name: Install specific packaes (RedHat based)
-      package:
+    - name: Install specific packages (RedHat based)
+      ansible.builtin.package:
         name:
           - gnome-pomodoro
-        state: latest
-      when: ansible_os_family == "RedHat"
-
+        state: present
+      when: ansible_facts['os_family'] == "RedHat"
 
     - name: Install specific packages (Deb based)
-      package:
+      ansible.builtin.package:
         name:
-          - gnome-shell-pomodoro
           - gnome-tweaks
-          - rustup
-        state: latest
-      when: ansible_os_family == "Debian"
-
+          # The distribution's Rust, not rustup. apt keeps these patched with
+          # no attention; rustup's apt package only updates the installer, so
+          # its toolchains go stale until someone runs "rustup update" by hand.
+          # rustup is the better choice for active Rust development — multiple
+          # toolchains, cross targets, a newer compiler than the distro pins —
+          # and worth revisiting if that changes. "rustc" does not pull in
+          # "cargo", so both are listed.
+          - rustc
+          - cargo
+        state: present
+      when: ansible_facts['os_family'] == "Debian"
 
     - name: Install snap packages with sandbox (Ubuntu)
       community.general.snap:
         name:
           - chromium
           - chromium-ffmpeg
+          # Snap rather than deb: the deb suite would install alongside this
+          # one rather than replacing it.
+          - libreoffice
           - mattermost-desktop
           - spotify
           - marktext
           - slack
           - nordvpn
       when: ansible_facts['distribution'] == "Ubuntu"
-      
-    - name: Install snap packages w/ "classic" privige (Ubuntu)
+
+    - name: Install snap packages w/ "classic" privilege (Ubuntu)
       community.general.snap:
         name:
           - nvim
           - code  # vscode
         classic: true
       when: ansible_facts['distribution'] == "Ubuntu"
-

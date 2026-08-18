@@ -1,35 +1,34 @@
 ---
-# Run as github pull:
-# ansible-pull --ask-become-pass -U git@github.com:maubuz/ansible-homelab.git workstation.yml
-
+# Installs Syncthing and enables it as a *user* service, so it runs as the
+# person who invoked the play rather than as root.
+#
+# Interactive-only. The user-scope systemd task talks to the invoking user's
+# systemd instance, which needs XDG_RUNTIME_DIR (/run/user/<uid>) to be set and
+# that user to have an active login session. Neither holds under ansible-pull
+# as ansiblebot. See "Execution model" in the README.
+#
 # Run locally:
-# ansible-playbook --ask-become <playbook-name.yml>
-
-- hosts: localhost
+#   scripts/run-playbook.sh syncthing
+- name: Install Syncthing
+  hosts: localhost
   connection: local
-  become: true
+  # Not escalated at play level: the user-scope service task must run as the
+  # invoking user, and gathering facts through sudo -H would report HOME as
+  # /root. Only the package install escalates.
+  become: false
+
   tasks:
-
     - name: Install Syncthing
-      package:
+      become: true
+      ansible.builtin.package:
         name: syncthing
-        state: latest
+        # present, not latest: upgrades are local.yml's job. See 1_workstation.yml.
+        state: present
 
-    - name: Enable Syncthing
+    - name: Enable and start the Syncthing user service
       ansible.builtin.systemd_service:
         name: syncthing
         scope: user
         enabled: true
         state: started
         daemon_reload: true
-      become_user: mau
-      become: no
-
-    # - name: Start Syncthing
-    #   ansible.builtin.systemd_service:
-    #     name: syncthing
-    #     scope: user
-    #     state: started
-    #   become_user: mau
-    #   become: no
-    #

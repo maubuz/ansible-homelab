@@ -3,32 +3,21 @@
 # person who invoked the play rather than as root.
 #
 # Interactive-only. The user-scope systemd task talks to the invoking user's
-# systemd instance, which needs XDG_RUNTIME_DIR (/run/user/<uid>) to be set and
-# that user to have an active login session. Neither holds under ansible-pull
-# as ansiblebot. See "Execution model" in the README.
-#
-# Run locally:
-#   scripts/run-playbook.sh syncthing
+# systemd instance, which needs XDG_RUNTIME_DIR (/run/user/<uid>) set and that
+# user to have a session — or lingering enabled, which is what the test VM does.
+# Neither holds under ansible-pull as ansiblebot. See "Execution model" in the
+# README.
 - name: Install Syncthing
-  hosts: localhost
-  connection: local
-  # Not escalated at play level: the user-scope service task must run as the
-  # invoking user, and gathering facts through sudo -H would report HOME as
-  # /root. Only the package install escalates.
-  become: false
+  become: true
+  ansible.builtin.package:
+    name: syncthing
+    # present, not latest: upgrades are the bootstrap role's job.
+    state: present
 
-  tasks:
-    - name: Install Syncthing
-      become: true
-      ansible.builtin.package:
-        name: syncthing
-        # present, not latest: upgrades are local.yml's job. See 1_workstation.yml.
-        state: present
-
-    - name: Enable and start the Syncthing user service
-      ansible.builtin.systemd_service:
-        name: syncthing
-        scope: user
-        enabled: true
-        state: started
-        daemon_reload: true
+- name: Enable and start the Syncthing user service
+  ansible.builtin.systemd_service:
+    name: syncthing
+    scope: user
+    enabled: true
+    state: started
+    daemon_reload: true

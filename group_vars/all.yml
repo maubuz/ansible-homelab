@@ -1,0 +1,4 @@
+---
+# Applies to every host in the inventory. Deliberately near-empty: values live
+# with the role that uses them (roles/*/defaults/main.yml) unless they genuinely
+# differ per host group.

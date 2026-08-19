@@ -1,37 +1,20 @@
 ---
-# Requires pipx, installed by 2b_workstation-python.yml. Run that play first.
+# Requires pipx from the python role.
 #
-# This play deliberately does not escalate: with become: true, facts are gathered
-# through sudo -H, so ansible_facts.env.HOME would resolve to /root and every
-# path below would point at the wrong home.
-- name: Install Gnome extensions
-  hosts: localhost
-  connection: local
-  become: false
-  vars:
-    gnome_home: '{{ ansible_facts.env.HOME }}'
-    # pipx shim, called by absolute path: ~/.local/bin is only on PATH in login
-    # shells, and Ansible's command module does not use one.
-    gext_bin: '{{ gnome_home }}/.local/bin/gext'
-    gnome_extensions_dir: '{{ gnome_home }}/.local/share/gnome-shell/extensions'
-    gnome_extensions:
-      - simple-timer@majortomvr.github.com   # https://github.com/MajortomVR/simple-timer-extension
-      - emoji-copy@felipeftn
-      - stopwatch@aliakseiz.github.com
-      - Vitals@CoreCoding.com                 # https://github.com/corecoding/Vitals
-    # Unused extensions: just-perfection-desktop@just-perfection
-    # Failed to install but was great: system-monitor-next@paradoxxx.zero.gmail.com
+# Nothing here escalates, and that is deliberate rather than an oversight: under
+# become, facts are gathered through sudo -H, so ansible_facts.env.HOME resolves
+# to /root and every path below points at the wrong home. That made the creates:
+# guard below match a directory that could never exist, so the install re-ran
+# on every play.
+# See https://github.com/essembeh/gnome-extensions-cli
+- name: Install gnome-extension-cli
+  community.general.pipx:
+    name: gnome-extensions-cli
+    state: present
+    system_site_packages: true
 
-  tasks:
-    # See https://github.com/essembeh/gnome-extensions-cli
-    - name: Install gnome-extension-cli
-      community.general.pipx:
-        name: gnome-extensions-cli
-        state: present
-        system_site_packages: true
-
-    - name: Install gnome extensions with gnome-extension-cli
-      ansible.builtin.command:
-        cmd: '{{ gext_bin }} --filesystem install {{ item }}'
-        creates: '{{ gnome_extensions_dir }}/{{ item }}'
-      loop: '{{ gnome_extensions }}'
+- name: Install gnome extensions with gnome-extension-cli
+  ansible.builtin.command:
+    cmd: '{{ gnome_extensions_bin }} --filesystem install {{ item }}'
+    creates: '{{ gnome_extensions_dir }}/{{ item }}'
+  loop: '{{ gnome_extensions_list }}'

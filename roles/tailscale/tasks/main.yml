@@ -1,94 +1,39 @@
 ---
-# Manages the Tailscale APT source and keeps the package current.
-#
-# This does NOT replace 9_tailscale.sh wholesale — it deliberately leaves out
-# "tailscale up", which opens a browser for interactive auth and is a one-time
-# step per machine, not something a converging play should re-run. Do that once,
-# by hand, after the first install:
+# Deliberately leaves out "tailscale up": that opens a browser for interactive
+# auth and is a one-time step per machine, not something a converging role
+# should re-run. Do it once by hand after the first install:
 #
 #     sudo tailscale up
-#
-# Why this exists: the 25.10 release upgrade could not migrate Tailscale's
-# one-line source, leaving tailscale.list.disabled and tailscale.list.migrate
-# with no active source at all. The package stayed installed but stopped
-# receiving updates — including security updates, for a VPN daemon. Managing the
-# source in deb822 form here makes that state unreachable, and "enabled: true"
-# revives the source if a future release upgrade disables it again.
-#
-# Run locally:
-#   scripts/run-playbook.sh tailscale
-- name: Install Tailscale
-  hosts: localhost
-  connection: local
-  become: true
+- name: Fail early on a non-Ubuntu host
+  ansible.builtin.assert:
+    that: ansible_facts.distribution == "Ubuntu"
+    fail_msg: >-
+      This role targets Ubuntu; Tailscale publishes separate repositories per
+      distribution. See https://tailscale.com/kb/1031/install-linux
+    quiet: true
+
+- name: Add the Tailscale APT source
+  tags: setup
+  ansible.builtin.include_role:
+    name: apt_source
   vars:
-    # Tailscale publishes per-release repositories keyed by the Ubuntu codename.
-    tailscale_suite: '{{ ansible_facts.distribution_release }}'
-    tailscale_keyring_path: /usr/share/keyrings/tailscale-archive-keyring.gpg
-    tailscale_keyring_url: >-
-      https://pkgs.tailscale.com/stable/ubuntu/{{ tailscale_suite }}.noarmor.gpg
-    tailscale_repo_uri: https://pkgs.tailscale.com/stable/ubuntu
+    apt_source_name: tailscale
+    apt_source_uri: '{{ tailscale_repo_uri }}'
+    apt_source_suites: '{{ tailscale_suite }}'
+    apt_source_components: main
+    # .noarmor.gpg is already dearmored, so no gpg step, unlike WezTerm's key.
+    apt_source_key_url: >-
+      {{ tailscale_repo_uri }}/{{ tailscale_suite }}.noarmor.gpg
+    apt_source_keyring: '{{ tailscale_keyring }}'
+    # Left behind by the 26.04 upgrade when it could not migrate the .list.
+    apt_source_legacy_files:
+      - tailscale.list.disabled
+      - tailscale.list.migrate
 
-  tasks:
-    - name: Fail early on a non-Ubuntu host
-      ansible.builtin.assert:
-        that: ansible_facts.distribution == "Ubuntu"
-        fail_msg: >-
-          This play targets Ubuntu; Tailscale publishes separate repositories per
-          distribution. See https://tailscale.com/kb/1031/install-linux
-      tags: setup
-
-    # The .noarmor.gpg key is already dearmored, so it goes straight to its
-    # final path — no gpg --dearmor step, unlike the WezTerm key.
-    #
-    # get_url is what makes this safe to re-run: it fails on an HTTP error and
-    # writes atomically. The shell script it replaces pipes curl into "sudo tee",
-    # so a failed download silently installs an empty or error-body keyring, and
-    # its "does the file exist" guard then skips the fix on every later run.
-    #
-    # Tailscale signs every Ubuntu suite with the same key, so an existing
-    # keyring stays valid across a release upgrade (verified: the resolute key
-    # is byte-identical to the one installed for questing). get_url therefore
-    # leaves it alone once present — if the key is ever rotated, delete the file
-    # and re-run.
-    - name: Install the Tailscale APT keyring
-      ansible.builtin.get_url:
-        url: '{{ tailscale_keyring_url }}'
-        dest: '{{ tailscale_keyring_path }}'
-        mode: '0644'
-        owner: root
-        group: root
-      tags: setup
-
-    - name: Add the Tailscale APT repository
-      ansible.builtin.deb822_repository:
-        name: tailscale
-        types: deb
-        uris: '{{ tailscale_repo_uri }}'
-        suites: '{{ tailscale_suite }}'
-        components: main
-        signed_by: '{{ tailscale_keyring_path }}'
-        enabled: true
-      tags: setup
-
-    # Leftovers from the failed 25.10 migration. apt ignores these extensions,
-    # but leaving them invites someone to "restore" one and end up with a
-    # duplicate source alongside the .sources file managed above.
-    - name: Remove superseded one-line Tailscale sources
-      ansible.builtin.file:
-        path: '/etc/apt/sources.list.d/{{ item }}'
-        state: absent
-      loop:
-        - tailscale.list
-        - tailscale.list.disabled
-        - tailscale.list.migrate
-      tags: setup
-
-    # update_cache is folded in here so that "changed" reflects the package
-    # operation alone; see the same note in 4_workstation-wezterm.yml.
-    - name: Install Tailscale # noqa: package-latest
-      ansible.builtin.apt:
-        name: tailscale
-        state: latest
-        update_cache: true
-      tags: install
+- name: Install Tailscale # noqa: package-latest
+  tags: install
+  become: true
+  ansible.builtin.apt:
+    name: tailscale
+    state: latest
+    update_cache: true

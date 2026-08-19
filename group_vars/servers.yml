@@ -1,0 +1,4 @@
+---
+# No servers yet. The bootstrap role is the only one servers.yml applies, and
+# its defaults are enough; this file exists so the group has somewhere obvious
+# to grow.

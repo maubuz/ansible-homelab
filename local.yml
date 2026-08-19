@@ -1,77 +1,12 @@
 ---
-# Default playbook for ansible-pull. Bootstraps a machine and provisions the
-# ansiblebot account used for unattended runs on servers.
+# Default playbook for ansible-pull, which runs local.yml from the repository
+# root unless told otherwise.
 #
-# This is the play that owns whole-system upgrades — the pre_tasks below. Other
-# plays install with state: present and leave upgrading to this one, so that
-# running them cannot bump unrelated packages.
+# hosts: all rather than a group name — ansible-pull generates its own inventory
+# containing just the machine it is running on, so a group from inventory.ini
+# would not match.
 - name: Bootstrap host
-  hosts: localhost
-  connection: local
-  become: true
-
-  vars:
-    ansible_user_name: "ansiblebot"
-
-  pre_tasks:
-    - name: Update package index
-      ansible.builtin.package:
-        update_cache: true
-      changed_when: false # Don't list as a changed
-
-    - name: Upgrade all packages (RedHat based) # noqa: package-latest
-      # state: latest on "*" is the upgrade itself, not a package install —
-      # the RedHat counterpart of the apt task below.
-      ansible.builtin.dnf:
-        name: "*"
-        state: latest
-      when: ansible_facts['os_family'] == "RedHat"
-
-    - name: Upgrade all packages (Deb based)
-      ansible.builtin.apt:
-        upgrade: 'yes'
-      when: ansible_facts['os_family'] == "Debian"
-
-  # TODO: Include in bootstrap role
-  tasks:
-
-    - name: Install avahi for mDNS configurations (RedHat based)
-      ansible.builtin.package:
-        name: avahi
-        state: present
-      when: ansible_facts['os_family'] == "RedHat"
-
-    - name: Install avahi for mDNS configurations (Deb based)
-      ansible.builtin.package:
-        name: avahi-daemon
-        state: present
-      when: ansible_facts['os_family'] == "Debian"
-
-    - name: Create ansible user
-      ansible.builtin.user:
-        name: "{{ ansible_user_name }}"
-        system: true
-        state: present
-        password: '!' # disable password
-        # No supplementary groups. Privilege comes from the sudoers rule below
-        # and nothing else; membership of the root group granted this account
-        # standing read access to root-group files on top of that, which it
-        # never needed. An empty string here also strips the membership on
-        # hosts an earlier version of this play already provisioned.
-        groups: ''
-        append: false
-        shell: /bin/bash  # Avoid default of sh (see SHELL in /etc/default/useradd)
-
-    - name: Add public ssh key for ansible user
-      ansible.posix.authorized_key:
-        user: "{{ ansible_user_name }}"
-        state: present
-        key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDcfhe0usxzgCZKkY54t2YH9aViT5am+dypn2aNP/5SV Ansiblebot Sept 2023"
-
-    - name: Add ansible role to sudoers list
-      ansible.builtin.copy:
-        src: sudoer_ansiblebot
-        dest: "/etc/sudoers.d/{{ ansible_user_name }}"
-        owner: root
-        group: root
-        mode: '0440'
+  hosts: all
+  become: false
+  roles:
+    - bootstrap

@@ -1,0 +1,8 @@
+---
+tailscale_repo_uri: https://pkgs.tailscale.com/stable/ubuntu
+# Tailscale publishes per-release repositories keyed by the Ubuntu codename.
+# Restoring a source pinned to the previous release after an upgrade is a real
+# mistake this avoids: the migrate file left behind said "questing" on a machine
+# already running "resolute".
+tailscale_suite: '{{ ansible_facts.distribution_release }}'
+tailscale_keyring: /usr/share/keyrings/tailscale-archive-keyring.gpg

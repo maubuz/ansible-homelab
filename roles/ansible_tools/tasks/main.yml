@@ -1,31 +1,20 @@
 ---
-# Ansible development tooling — what you need to work *on* this repository,
-# as opposed to what the other plays install on the machine.
+# What you need to work *on* this repository, as opposed to what the other
+# roles install on the machine. Requires pipx from the python role.
 #
-# Requires pipx, installed by 2b_workstation-python.yml. Run that play first.
+# Lint from the repository root: ansible.cfg sets collections_path so the linter
+# finds the collections Ubuntu ships inside the ansible package's own tree.
+# Without that it reports every community.general and ansible.posix task as an
+# unresolvable module.
 #
-# Run locally:
-#   scripts/run-playbook.sh 2c
+#   ansible-lint playbooks/ roles/ local.yml site.yml
 #
-# Then, from the repository root:
-#   ansible-lint workstation/ local.yml
-#
-# Run it from the root specifically: ansible.cfg sets collections_path so the
-# linter can find the collections Ubuntu ships inside the ansible package's own
-# tree. Without that it reports every community.general and ansible.posix task
-# as an unresolvable module.
-- name: Install Ansible tooling
-  hosts: localhost
-  connection: local
-  become: false
-
-  tasks:
-    # state: latest rather than present, matching uv in 2b. Nothing upgrades
-    # pipx packages for us — local.yml's system upgrade does not reach them —
-    # so latest is the only way a linter stays current with the rules it
-    # enforces. This is not the state: latest that Option A moved away from;
-    # that applied to system packages, which local.yml does own.
-    - name: Install ansible-lint with pipx
-      community.general.pipx:
-        name: ansible-lint
-        state: latest
+# state: latest rather than present, matching uv in the python role. Nothing
+# upgrades pipx packages for us — the bootstrap role's system upgrade does not
+# reach them — so latest is the only way a linter stays current with the rules
+# it enforces. This is not the state: latest that system packages moved away
+# from; those are owned by the bootstrap role.
+- name: Install ansible-lint with pipx
+  community.general.pipx:
+    name: ansible-lint
+    state: latest

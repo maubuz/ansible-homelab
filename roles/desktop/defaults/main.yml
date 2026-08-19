@@ -1,0 +1,7 @@
+---
+# Overridden per host group in group_vars/workstations.yml.
+desktop_packages: []
+desktop_packages_deb: []
+desktop_packages_redhat: []
+desktop_snaps: []
+desktop_snaps_classic: []

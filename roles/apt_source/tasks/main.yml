@@ -1,0 +1,62 @@
+---
+# Adds a third-party APT repository in deb822 form, with its signing key.
+#
+# Exists because this sequence was hand-rolled once per repository, and getting
+# it subtly wrong in several places at once is what left four repositories
+# disabled and unnoticed after the 26.04 release upgrade: the upgrade rewrote
+# their .sources with "Enabled: no", while the installers still looked for the
+# .list files it had migrated away.
+#
+# Callers set apt_source_* and follow with their own package install.
+- name: Check the required variables are set
+  ansible.builtin.assert:
+    that:
+      - apt_source_name | length > 0
+      - apt_source_uri | length > 0
+      - apt_source_suites | length > 0
+      - apt_source_key_url | length > 0
+    fail_msg: apt_source requires name, uri, suites and key_url
+    quiet: true
+
+# get_url rather than "curl | tee": it fails on an HTTP error and writes
+# atomically, so a failed download cannot install an error page as the signing
+# key and then be skipped forever by an "if the file exists" guard.
+- name: Fetch the signing key for {{ apt_source_name }}
+  tags: setup
+  become: true
+  ansible.builtin.get_url:
+    url: '{{ apt_source_key_url }}'
+    dest: "{{ apt_source_keyring }}{{ '.asc' if apt_source_key_armoured else '' }}"
+    mode: '0644'
+    owner: root
+    group: root
+
+- name: Dearmor the signing key for {{ apt_source_name }}
+  tags: setup
+  become: true
+  when: apt_source_key_armoured
+  ansible.builtin.command:
+    cmd: gpg --yes --dearmor -o {{ apt_source_keyring }} {{ apt_source_keyring }}.asc
+    creates: '{{ apt_source_keyring }}'
+
+# enabled: true is the load-bearing part — it also revives a source that a
+# release upgrade disabled, which is the failure this role exists to prevent.
+- name: Add the APT source for {{ apt_source_name }}
+  tags: setup
+  become: true
+  ansible.builtin.deb822_repository:
+    name: '{{ apt_source_name }}'
+    types: deb
+    uris: '{{ apt_source_uri }}'
+    suites: '{{ apt_source_suites }}'
+    components: '{{ apt_source_components }}'
+    signed_by: '{{ apt_source_keyring }}'
+    enabled: true
+
+- name: Remove superseded one-line sources for {{ apt_source_name }}
+  tags: setup
+  become: true
+  ansible.builtin.file:
+    path: '/etc/apt/sources.list.d/{{ item }}'
+    state: absent
+  loop: "{{ [apt_source_name ~ '.list'] + apt_source_legacy_files }}"

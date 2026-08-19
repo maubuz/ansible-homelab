@@ -1,0 +1,6 @@
+---
+- name: Bootstrap servers
+  hosts: servers
+  become: false
+  roles:
+    - bootstrap

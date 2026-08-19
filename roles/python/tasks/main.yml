@@ -1,25 +1,20 @@
 ---
-# Python tooling bootstrap. Owns pipx for the whole workstation sequence —
-# 5_workstation-gnome.yml depends on this play having run first.
-- name: Install Python tooling
-  hosts: localhost
-  connection: local
-  become: false
-  tasks:
-    - name: Install python related packages (Ubuntu)
-      become: true
-      ansible.builtin.package:
-        update_cache: true
-        name: [python3-pip, pipx, python3-venv, python-is-python3]
-        state: present
-      when: ansible_facts['distribution'] == "Ubuntu"
+# Owns pipx for the whole workstation sequence: gnome_extensions and
+# ansible_tools both install through it, so this role runs before them.
+- name: Install python related packages (Ubuntu)
+  become: true
+  ansible.builtin.package:
+    update_cache: true
+    name: [python3-pip, pipx, python3-venv, python-is-python3]
+    state: present
+  when: ansible_facts['distribution'] == "Ubuntu"
 
-    - name: Ensure pipx is in path
-      ansible.builtin.command:
-        cmd: pipx ensurepath
-      changed_when: false
+- name: Ensure pipx is in path
+  ansible.builtin.command:
+    cmd: pipx ensurepath
+  changed_when: false
 
-    - name: Install uv with pipx
-      community.general.pipx:
-        name: uv
-        state: latest
+- name: Install uv with pipx
+  community.general.pipx:
+    name: uv
+    state: latest

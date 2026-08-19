@@ -1,0 +1,6 @@
+---
+# Everything, for every group in the inventory.
+- name: Workstation
+  ansible.builtin.import_playbook: playbooks/workstation.yml
+- name: Servers
+  ansible.builtin.import_playbook: playbooks/servers.yml

@@ -1,0 +1,7 @@
+---
+# wezterm-nightly declares "Conflicts: wezterm", so the two channels are
+# mutually exclusive. Override with -e wezterm_package=wezterm for stable.
+wezterm_package: wezterm-nightly
+wezterm_key_url: https://apt.fury.io/wez/gpg.key
+wezterm_keyring: /usr/share/keyrings/wezterm-fury.gpg
+wezterm_repo_uri: https://apt.fury.io/wez/

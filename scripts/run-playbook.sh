@@ -10,7 +10,7 @@
 #   scripts/run-playbook.sh [--check] <playbook> [extra ansible-playbook args]
 #
 # Examples:
-#   scripts/run-playbook.sh workstation/4_workstation-wezterm.yml
+#   scripts/run-playbook.sh playbooks/wezterm.yml
 #   scripts/run-playbook.sh --check wezterm      # substring match, dry run
 #   scripts/run-playbook.sh local.yml --tags install
 #   scripts/run-playbook.sh npm -vv              # extra verbosity
@@ -66,7 +66,7 @@ done
 # ── Resolve the playbook path ─────────────────────────────────────────────────
 # Accepts a full path, or any substring unique among the repo's playbooks.
 if [[ ! -f $playbook ]]; then
-  mapfile -t matches < <(ls workstation/*.yml ./*.yml 2>/dev/null | grep -i -- "$playbook" || true)
+  mapfile -t matches < <(ls playbooks/*.yml ./*.yml 2>/dev/null | grep -i -- "$playbook" || true)
   case ${#matches[@]} in
     1) playbook=${matches[0]} ;;
     0) die "no playbook matching '$playbook'" ;;
@@ -97,8 +97,40 @@ sudo_is_passwordless() {
   sudo -n -l 2>/dev/null | grep -q 'NOPASSWD: ALL'
 }
 
+# Whether anything in this run escalates. Escalation lives in the roles, not in
+# the playbook — the plays are all "become: false" and each role puts
+# "become: true" on the tasks that need root — so grepping the playbook alone
+# finds nothing and the prompt would be skipped, failing the run part-way
+# through. Follow the playbook to its roles, and through any playbook it
+# imports, then grep those task files too.
+run_escalates() {
+  local file=$1 seen=${2:-}
+  [[ $seen == *"|$file|"* ]] && return 1
+  seen="${seen}|${file}|"
+
+  grep -qE '^[[:space:]]*become:[[:space:]]*(true|yes)' "$file" && return 0
+
+  local name
+  # Roles named under a "roles:" list, and any role pulled in by include_role.
+  while read -r name; do
+    [[ -d "roles/$name/tasks" ]] || continue
+    grep -rqE '^[[:space:]]*become:[[:space:]]*(true|yes)' "roles/$name/tasks" && return 0
+  done < <(sed -nE 's/^[[:space:]]*-[[:space:]]+([a-z0-9_]+)[[:space:]]*$/\1/p;
+                    s/^[[:space:]]*name:[[:space:]]*([a-z0-9_]+)[[:space:]]*$/\1/p' "$file")
+
+  # import_playbook, so "site" and "workstation" are resolved too.
+  local imported
+  while read -r imported; do
+    [[ -f $imported ]] || imported="$(dirname "$file")/$imported"
+    [[ -f $imported ]] || continue
+    run_escalates "$imported" "$seen" && return 0
+  done < <(sed -nE 's/.*import_playbook:[[:space:]]*(\S+).*/\1/p' "$file")
+
+  return 1
+}
+
 become_args=()
-if ! $inspect_only && grep -qE '^[[:space:]]*become:[[:space:]]*(true|yes)' "$playbook"; then
+if ! $inspect_only && run_escalates "$playbook"; then
   if sudo_is_passwordless; then
     : # nothing to prompt for, so the run works unattended
   elif [[ -t 0 ]]; then

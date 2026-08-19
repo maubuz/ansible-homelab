@@ -1,0 +1,10 @@
+---
+- name: Install Syncthing
+  hosts: workstations
+  # Plays do not escalate; roles put become: true on the tasks that need it.
+  # Play-level become also applies to fact gathering, where sudo -H rewrites
+  # HOME to /root and every path derived from it silently points at the wrong
+  # place.
+  become: false
+  roles:
+    - syncthing

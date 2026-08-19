@@ -1,0 +1,54 @@
+---
+# Package lists live here rather than in the desktop role's defaults because
+# they are a statement about this group of machines, not about how the role
+# works. A server group would apply the same role with a different list.
+desktop_packages:
+  - gimp
+  - inkscape
+  - fd-find
+  - git-delta
+  - fzf
+  - bat
+  - stow
+  - htop
+  - ripgrep
+  - gnome-shell-extension-manager
+  - curl
+  # includes gcc compiler, make, and other tools. Used for nvim (tree-sitter et al.)
+  - build-essential
+  - flameshot
+
+desktop_packages_deb:
+  - gnome-tweaks
+  # The distribution's Rust, not rustup. apt keeps these patched
+  # rustup's apt package only updates the installer, so its
+  # toolchains go stale until someone runs "rustup update" by hand.
+  - rustc
+  - cargo
+
+desktop_packages_redhat:
+  - gnome-pomodoro
+
+desktop_snaps:
+  - chromium
+  - chromium-ffmpeg
+  # Snap rather than deb: the deb suite would install alongside this one rather
+  # than replacing it.
+  - libreoffice
+  - mattermost-desktop
+  - spotify
+  - marktext
+  - slack
+  - nordvpn
+
+desktop_snaps_classic:
+  - nvim
+  - code  # vscode
+
+gnome_extensions_list:
+  - simple-timer@majortomvr.github.com   # https://github.com/MajortomVR/simple-timer-extension
+  - emoji-copy@felipeftn
+  - stopwatch@aliakseiz.github.com
+  - Vitals@CoreCoding.com                 # https://github.com/corecoding/Vitals
+  # Unused extensions: just-perfection-desktop@just-perfection
+  # Failed to install but was great: system-monitor-next@paradoxxx.zero.gmail.com

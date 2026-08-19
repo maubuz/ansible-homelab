@@ -1,0 +1,16 @@
+---
+# Identifier for the source; becomes /etc/apt/sources.list.d/<name>.sources.
+apt_source_name: ''
+apt_source_uri: ''
+apt_source_suites: ''
+apt_source_components: main
+apt_source_key_url: ''
+apt_source_keyring: '/usr/share/keyrings/{{ apt_source_name }}.gpg'
+# Set true when upstream publishes an ASCII-armoured key, which has to be
+# dearmored before apt will accept it. Tailscale ships .noarmor.gpg and needs
+# this false; WezTerm's gpg.key is armoured and needs it true.
+apt_source_key_armoured: false
+# Extra one-line files to delete. A release upgrade that cannot migrate a .list
+# leaves .disabled/.migrate copies behind, and "restoring" one produces a
+# duplicate source alongside the .sources file managed here.
+apt_source_legacy_files: []

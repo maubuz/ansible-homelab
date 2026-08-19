@@ -1,0 +1,71 @@
+---
+# Brings a machine up to date and provisions the account used for unattended
+# runs. This is the role that owns whole-system upgrades — every other role
+# installs with state: present and leaves upgrading to this one, so running
+# them cannot bump unrelated packages.
+- name: Update package index
+  become: true
+  ansible.builtin.package:
+    update_cache: true
+  changed_when: false # Don't list as a changed
+
+- name: Upgrade all packages (RedHat based) # noqa: package-latest
+  become: true
+  # state: latest on "*" is the upgrade itself, not a package install —
+  # the RedHat counterpart of the apt task below.
+  ansible.builtin.dnf:
+    name: "*"
+    state: latest
+  when: ansible_facts['os_family'] == "RedHat"
+
+- name: Upgrade all packages (Deb based)
+  become: true
+  ansible.builtin.apt:
+    upgrade: 'yes'
+  when: ansible_facts['os_family'] == "Debian"
+
+- name: Install avahi for mDNS configurations (RedHat based)
+  become: true
+  ansible.builtin.package:
+    name: avahi
+    state: present
+  when: ansible_facts['os_family'] == "RedHat"
+
+- name: Install avahi for mDNS configurations (Deb based)
+  become: true
+  ansible.builtin.package:
+    name: avahi-daemon
+    state: present
+  when: ansible_facts['os_family'] == "Debian"
+
+- name: Create ansible user
+  become: true
+  ansible.builtin.user:
+    name: "{{ bootstrap_user }}"
+    system: true
+    state: present
+    password: '!' # disable password
+    # No supplementary groups. Privilege comes from the sudoers rule below and
+    # nothing else; membership of the root group granted this account standing
+    # read access to root-group files on top of that, which it never needed. An
+    # empty string here also strips the membership on hosts an earlier version
+    # of this role already provisioned.
+    groups: ''
+    append: false
+    shell: /bin/bash  # Avoid default of sh (see SHELL in /etc/default/useradd)
+
+- name: Add public ssh key for ansible user
+  become: true
+  ansible.posix.authorized_key:
+    user: "{{ bootstrap_user }}"
+    state: present
+    key: "{{ bootstrap_user_key }}"
+
+- name: Add ansible role to sudoers list
+  become: true
+  ansible.builtin.copy:
+    src: sudoer_ansiblebot
+    dest: "/etc/sudoers.d/{{ bootstrap_user }}"
+    owner: root
+    group: root
+    mode: '0440'

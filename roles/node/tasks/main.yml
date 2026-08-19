@@ -1,50 +1,50 @@
 ---
-- name: Install NVM and NPM LTS
-  hosts: localhost
-  become: false
-  vars:
-    nvm_install_url: https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh
-    nvm_dir: '{{ ansible_facts.env.HOME }}/.nvm'
-    # nvm is a shell function, so every task below has to source it first
-    nvm_load: export NVM_DIR="{{ nvm_dir }}" && [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+# Never escalates: nvm installs into the invoking user's home, and under become
+# the gathered ansible_facts.env.HOME would be /root.
+#
+# noqa: command-instead-of-module — get_url cannot replace this. nvm is
+# distributed as an installer script that must be executed, not a file to be
+# fetched; piping it to bash is upstream's documented install method.
+#
+# pipefail matters here: without it the pipeline's status is bash's, so a failed
+# curl would report success and leave nvm uninstalled.
+- name: Install nvm # noqa: command-instead-of-module
+  ansible.builtin.shell:
+    cmd: |
+      set -o pipefail
+      curl -o- {{ node_nvm_install_url }} | bash
+    executable: /bin/bash
+    creates: '{{ node_nvm_dir }}/nvm.sh'
 
-  tasks:
-    # noqa: command-instead-of-module — get_url cannot replace this. nvm is
-    # distributed as an installer script that must be executed, not a file to
-    # be fetched; piping it to bash is upstream's documented install method.
-    #
-    # pipefail matters here: without it the pipeline's status is bash's, so a
-    # failed curl would report success and leave nvm uninstalled.
-    - name: Install nvm # noqa: command-instead-of-module
-      ansible.builtin.shell:
-        cmd: |
-          set -o pipefail
-          curl -o- {{ nvm_install_url }} | bash
-        executable: /bin/bash
-        creates: '{{ nvm_dir }}/nvm.sh'
+# Tracks the LTS line: when a new LTS ships this installs it, carries the
+# globals over from the outgoing version, and makes it the default.
+#
+# changed_when reads stderr as well as stdout because nvm reports "is already
+# installed" through nvm_err.
+- name: Install Node.js LTS using NVM
+  ansible.builtin.shell:
+    cmd: '{{ node_nvm_load }} && nvm install --lts --reinstall-packages-from=current --latest-npm'
+    executable: /bin/bash
+  register: node_nvm_install_lts
+  changed_when: '"is already installed" not in node_nvm_install_lts.stdout + node_nvm_install_lts.stderr'
 
-    # Tracks the LTS line: when a new LTS ships this installs it, carries the
-    # globals over from the outgoing version, and makes it the default.
-    - name: Install Node.js LTS using NVM
-      ansible.builtin.shell:
-        cmd: '{{ nvm_load }} && nvm install --lts --reinstall-packages-from=current --latest-npm'
-        executable: /bin/bash
-      register: nvm_install_lts
-      changed_when: '"is already installed" not in nvm_install_lts.stdout + nvm_install_lts.stderr'
+- name: Check whether the global npm packages are installed
+  ansible.builtin.shell:
+    cmd: '{{ node_nvm_load }} && nvm use --lts && npm ls -g --depth=0 {{ item }}'
+    executable: /bin/bash
+  register: node_npm_ls_global
+  loop: '{{ node_global_packages }}'
+  failed_when: false
+  changed_when: false
 
-    - name: Check whether TypeScript is installed globally
-      ansible.builtin.shell:
-        cmd: '{{ nvm_load }} && nvm use --lts && npm ls -g --depth=0 typescript'
-        executable: /bin/bash
-      register: npm_ls_typescript
-      failed_when: false
-      changed_when: false
-
-    # The probe above is the idempotency guard, so reaching this task always
-    # means TypeScript was missing and is now being installed — a real change.
-    - name: Install TypeScript globally
-      ansible.builtin.shell:
-        cmd: '{{ nvm_load }} && nvm use --lts && npm install -g typescript'
-        executable: /bin/bash
-      when: npm_ls_typescript.rc != 0
-      changed_when: true
+# The probe above is the idempotency guard, so reaching this task always means
+# the package was missing and is now being installed — a real change.
+- name: Install the global npm packages
+  ansible.builtin.shell:
+    cmd: '{{ node_nvm_load }} && nvm use --lts && npm install -g {{ item.item }}'
+    executable: /bin/bash
+  loop: '{{ node_npm_ls_global.results }}'
+  loop_control:
+    label: '{{ item.item }}'
+  when: item.rc != 0
+  changed_when: true

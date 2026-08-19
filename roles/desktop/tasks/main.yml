@@ -1,80 +1,48 @@
 ---
 # Baseline workstation packages.
 #
-# state: present, not latest — this play means "these packages exist", not
-# "upgrade them now". Whole-system upgrades are local.yml's job, so a run here
-# cannot surprise you with a toolchain bump you did not ask for.
-#
-# Run locally:
-#   scripts/run-playbook.sh 1_workstation
-- name: Install workstation packages
-  hosts: localhost
-  connection: local
+# state: present, not latest — this role means "these packages exist", not
+# "upgrade them now". Whole-system upgrades belong to the bootstrap role, so a
+# run here cannot surprise you with a toolchain bump you did not ask for.
+- name: Install workstation packages (all linux families)
   become: true
+  ansible.builtin.package:
+    update_cache: true
+    name: '{{ desktop_packages }}'
+    state: present
+  when: desktop_packages | length > 0
 
-  tasks:
-    - name: Install workstation packages (all linux families)
-      ansible.builtin.package:
-        update_cache: true
-        name:
-          - gimp
-          - inkscape
-          - fd-find
-          - git-delta
-          - fzf
-          - bat
-          - stow
-          - htop
-          - ripgrep
-          - gnome-shell-extension-manager
-          - curl
-          # includes gcc compiler, make, and other tools. Used for nvim kickstart (tree-sitter et al.)
-          - build-essential
-          - flameshot
-        state: present
+- name: Install specific packages (RedHat based)
+  become: true
+  ansible.builtin.package:
+    name: '{{ desktop_packages_redhat }}'
+    state: present
+  when:
+    - ansible_facts['os_family'] == "RedHat"
+    - desktop_packages_redhat | length > 0
 
-    - name: Install specific packages (RedHat based)
-      ansible.builtin.package:
-        name:
-          - gnome-pomodoro
-        state: present
-      when: ansible_facts['os_family'] == "RedHat"
+- name: Install specific packages (Deb based)
+  become: true
+  ansible.builtin.package:
+    name: '{{ desktop_packages_deb }}'
+    state: present
+  when:
+    - ansible_facts['os_family'] == "Debian"
+    - desktop_packages_deb | length > 0
 
-    - name: Install specific packages (Deb based)
-      ansible.builtin.package:
-        name:
-          - gnome-tweaks
-          # The distribution's Rust, not rustup. apt keeps these patched with
-          # no attention; rustup's apt package only updates the installer, so
-          # its toolchains go stale until someone runs "rustup update" by hand.
-          # rustup is the better choice for active Rust development — multiple
-          # toolchains, cross targets, a newer compiler than the distro pins —
-          # and worth revisiting if that changes. "rustc" does not pull in
-          # "cargo", so both are listed.
-          - rustc
-          - cargo
-        state: present
-      when: ansible_facts['os_family'] == "Debian"
+- name: Install snap packages with sandbox (Ubuntu)
+  become: true
+  community.general.snap:
+    name: '{{ desktop_snaps }}'
+  when:
+    - ansible_facts['distribution'] == "Ubuntu"
+    - desktop_snaps | length > 0
 
-    - name: Install snap packages with sandbox (Ubuntu)
-      community.general.snap:
-        name:
-          - chromium
-          - chromium-ffmpeg
-          # Snap rather than deb: the deb suite would install alongside this
-          # one rather than replacing it.
-          - libreoffice
-          - mattermost-desktop
-          - spotify
-          - marktext
-          - slack
-          - nordvpn
-      when: ansible_facts['distribution'] == "Ubuntu"
-
-    - name: Install snap packages w/ "classic" privilege (Ubuntu)
-      community.general.snap:
-        name:
-          - nvim
-          - code  # vscode
-        classic: true
-      when: ansible_facts['distribution'] == "Ubuntu"
+- name: Install snap packages w/ "classic" privilege (Ubuntu)
+  become: true
+  community.general.snap:
+    name: '{{ desktop_snaps_classic }}'
+    classic: true
+  when:
+    - ansible_facts['distribution'] == "Ubuntu"
+    - desktop_snaps_classic | length > 0

@@ -1,0 +1,20 @@
+---
+# Everything a workstation needs, in dependency order. The order here is what
+# the numeric filename prefixes used to imply: python installs pipx, which
+# ansible-tools and gnome both need. Everything else is independent.
+- name: Desktop
+  ansible.builtin.import_playbook: desktop.yml
+- name: Python
+  ansible.builtin.import_playbook: python.yml
+- name: Ansible tools
+  ansible.builtin.import_playbook: ansible-tools.yml
+- name: Node
+  ansible.builtin.import_playbook: node.yml
+- name: Wezterm
+  ansible.builtin.import_playbook: wezterm.yml
+- name: Tailscale
+  ansible.builtin.import_playbook: tailscale.yml
+- name: Syncthing
+  ansible.builtin.import_playbook: syncthing.yml
+- name: Gnome
+  ansible.builtin.import_playbook: gnome.yml

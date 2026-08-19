@@ -6,7 +6,7 @@
 # machine, where every "creates:" guard, keyring and apt source already exists —
 # so the first-install paths never execute. A clean VM is the only place they do.
 #
-# It is a VM rather than a container because 1_workstation.yml installs snaps,
+# It is a VM rather than a container because the desktop role installs snaps,
 # and snapd is unreliable in an unprivileged container. Those snaps are also
 # what sets the disk size: they need well over 15GiB once the apt packages are
 # there too.
@@ -26,8 +26,8 @@
 #
 # Typical session:
 #   scripts/test-vm.sh create
-#   scripts/test-vm.sh run 2b
-#   scripts/test-vm.sh run 2b              # second run must report changed=0
+#   scripts/test-vm.sh run python
+#   scripts/test-vm.sh run python              # second run must report changed=0
 #   scripts/test-vm.sh destroy
 #
 # The VM's default user has passwordless sudo, so plays run unattended there;
@@ -56,9 +56,9 @@ readonly IMAGE=ubuntu:26.04
 # works on any machine with LXD rather than only one that happens to have a
 # particular profile defined.
 #
-# 25GiB because 1_workstation.yml is the sizing constraint: its ten snaps plus
+# 25GiB because the desktop role is the sizing constraint: its ten snaps plus
 # the apt packages reached 12GB, which filled a 15GiB disk to 90% and left no
-# room for local.yml's system upgrade. ZFS is sparse, so this is a ceiling and
+# room for the bootstrap role's upgrade. ZFS is sparse, so this is a ceiling and
 # not a reservation.
 readonly VM_CPU=2
 readonly VM_MEMORY=4GiB
@@ -124,14 +124,14 @@ cmd_create() {
   vm_root apt-get update -qq
   vm_root apt-get install -y -qq ansible git
 
-  # 8_workstation-syncthing.yml enables a *user* systemd service, which needs a
+  # The syncthing role enables a *user* systemd service, which needs a
   # persistent user manager. Without lingering there is no session for a
   # non-login exec to talk to and the task fails for reasons unrelated to it.
   echo "==> Enabling lingering for the ubuntu user"
   vm_root loginctl enable-linger ubuntu
 
   cmd_share
-  echo "==> Ready. Run a playbook with: scripts/test-vm.sh run 2b"
+  echo "==> Ready. Run a playbook with: scripts/test-vm.sh run python"
 }
 
 cmd_share() {
@@ -155,7 +155,7 @@ Check lxd-agent:  lxc exec $VM --project $PROJECT -- systemctl status lxd-agent"
 
 cmd_run() {
   require_vm
-  [[ $# -gt 0 ]] || die "run needs a playbook, e.g. scripts/test-vm.sh run 2b"
+  [[ $# -gt 0 ]] || die "run needs a playbook, e.g. scripts/test-vm.sh run python"
   vm_user bash -lc "cd '$VM_REPO' && scripts/run-playbook.sh $*"
 }
 

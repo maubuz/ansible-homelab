@@ -107,10 +107,15 @@ cmd_create() {
   echo "==> Launching $VM ($IMAGE, ${VM_CPU} cpu, ${VM_MEMORY} ram, ${VM_DISK} disk)"
   # The default profile supplies the network and the storage pool, which every
   # LXD install has; only the sizing is overridden on top of it.
+  # stdin from /dev/null: "lxc launch" blocks indefinitely reading stdin when it
+  # inherits a pipe that never delivers, which is what happens when this script
+  # runs from a non-interactive parent such as CI or a background job. It waits
+  # on the socket with no timeout of its own, so the symptom is a create that
+  # never returns rather than an error. "lxc exec" is unaffected.
   lxc_ launch "$IMAGE" "$VM" --vm \
     --config "limits.cpu=${VM_CPU}" \
     --config "limits.memory=${VM_MEMORY}" \
-    --device "root,size=${VM_DISK}"
+    --device "root,size=${VM_DISK}" </dev/null
 
   echo "==> Waiting for cloud-init"
   # The agent needs a moment before exec works at all.

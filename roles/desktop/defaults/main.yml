@@ -1,6 +1,12 @@
 ---
-# Overridden per host group in group_vars/workstations.yml.
-desktop_packages: []
+# desktop_packages is deliberately absent. It is what this role is for, so the
+# role asserts it instead of defaulting it: an empty default would turn "the
+# host group forgot to set the package list" into a run that reports ok and
+# installs nothing, which is a worse failure than an error.
+#
+# The lists below are genuinely optional — a host group may have no extras for
+# a given package manager — so an empty default is the honest value for them
+# and installing nothing is the correct outcome.
 desktop_packages_deb: []
 desktop_packages_redhat: []
 desktop_snaps: []

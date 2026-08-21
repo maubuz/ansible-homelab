@@ -4,13 +4,21 @@
 # state: present, not latest — this role means "these packages exist", not
 # "upgrade them now". Whole-system upgrades belong to the bootstrap role, so a
 # run here cannot surprise you with a toolchain bump you did not ask for.
+# Required, so it is checked rather than defaulted. See defaults/main.yml.
+- name: Check the required variables are set
+  ansible.builtin.assert:
+    that: desktop_packages | default([], true) | length > 0
+    fail_msg: >-
+      desktop_packages must list the baseline packages for this host group.
+      Set it in group_vars/<group>.yml.
+    quiet: true
+
 - name: Install workstation packages (all linux families)
   become: true
   ansible.builtin.package:
     update_cache: true
     name: '{{ desktop_packages }}'
     state: present
-  when: desktop_packages | length > 0
 
 - name: Install specific packages (RedHat based)
   become: true

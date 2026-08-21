@@ -1,8 +1,13 @@
 ---
+# Derived paths, so a default is the right thing here: they are computed from
+# the invoking user's home rather than being content someone has to supply.
 gnome_extensions_home: '{{ ansible_facts.env.HOME }}'
 # pipx shim, called by absolute path: ~/.local/bin is only on PATH in login
 # shells, and Ansible's command module does not use one.
 gnome_extensions_bin: '{{ gnome_extensions_home }}/.local/bin/gext'
 gnome_extensions_dir: '{{ gnome_extensions_home }}/.local/share/gnome-shell/extensions'
-# Overridden per host group in group_vars/workstations.yml.
-gnome_extensions_list: []
+
+# gnome_extensions_list is deliberately absent. It is what this role is for, so
+# the role asserts it instead of defaulting it: an empty default would turn "the
+# host group forgot to list any extensions" into a run that reports ok and
+# installs nothing.

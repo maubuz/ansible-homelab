@@ -6,6 +6,15 @@
 # to /root and every path below points at the wrong home. That made the creates:
 # guard below match a directory that could never exist, so the install re-ran
 # on every play.
+# Required, so it is checked rather than defaulted. See defaults/main.yml.
+- name: Check the required variables are set
+  ansible.builtin.assert:
+    that: gnome_extensions_list | default([], true) | length > 0
+    fail_msg: >-
+      gnome_extensions_list must name the extensions to install for this host
+      group. Set it in group_vars/<group>.yml.
+    quiet: true
+
 # See https://github.com/essembeh/gnome-extensions-cli
 - name: Install gnome-extension-cli
   community.general.pipx:

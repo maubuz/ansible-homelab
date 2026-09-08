@@ -50,5 +50,6 @@ gnome_extensions_list:
   - emoji-copy@felipeftn
   - stopwatch@aliakseiz.github.com
   - Vitals@CoreCoding.com                 # https://github.com/corecoding/Vitals
+  - pomodoro-timer@Oguzhankokulu.github.com
   # Unused extensions: just-perfection-desktop@just-perfection
   # Failed to install but was great: system-monitor-next@paradoxxx.zero.gmail.com

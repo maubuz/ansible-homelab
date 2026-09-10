@@ -33,20 +33,22 @@ fi
 refresh_cache=0
 
 # ── 1. Keyring ────────────────────────────────────────────────────────────────
-if [[ -f "$brave_keyring_path" ]]; then
-  echo "[1/4] Brave keyring already present, skipping download."
+# Download to a temp file first, with -f so an HTTP error is a failure.
+# Piping curl straight into "sudo tee" would install an error page as the
+# signing key. Compare with cmp so key updates/rotations are caught.
+tmpkey=$(mktemp)
+trap 'rm -f "$tmpkey"' EXIT
+curl -fsSL --retry 3 -o "$tmpkey" "$brave_keyring_url"
+if [[ -f "$brave_keyring_path" ]] && cmp -s "$tmpkey" "$brave_keyring_path"; then
+  echo "[1/4] Brave keyring already present and up to date, skipping."
 else
-  echo "[1/4] Downloading Brave keyring"
-  # Download to a temp file first, with -f so an HTTP error is a failure.
-  # Piping curl straight into "sudo tee" would install an error page as the
-  # signing key, and the check above would then skip the fix on every later run.
-  tmpkey=$(mktemp)
-  trap 'rm -f "$tmpkey"' EXIT
-  curl -fsSL --retry 3 -o "$tmpkey" "$brave_keyring_url"
+  echo "[1/4] Installing/updating Brave keyring"
+  sudo mkdir -p -m 755 "$(dirname "$brave_keyring_path")"
   sudo install -m 0644 -o root -g root "$tmpkey" "$brave_keyring_path"
-  rm -f "$tmpkey"
-  trap - EXIT
+  refresh_cache=1
 fi
+rm -f "$tmpkey"
+trap - EXIT
 
 # ── 2. APT source ─────────────────────────────────────────────────────────────
 # Compared against the desired content rather than merely checked for existence.

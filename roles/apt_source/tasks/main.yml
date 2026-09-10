@@ -30,14 +30,25 @@
     mode: '0644'
     owner: root
     group: root
+  register: apt_source_fetch_key
+
+- name: Check whether dearmored keyring exists for {{ apt_source_name }}
+  tags: setup
+  become: true
+  ansible.builtin.stat:
+    path: '{{ apt_source_keyring }}'
+  register: apt_source_keyring_stat
+  when: apt_source_key_armoured
 
 - name: Dearmor the signing key for {{ apt_source_name }}
   tags: setup
   become: true
-  when: apt_source_key_armoured
+  when:
+    - apt_source_key_armoured
+    - apt_source_fetch_key.changed or not apt_source_keyring_stat.stat.exists
   ansible.builtin.command:
     cmd: gpg --yes --dearmor -o {{ apt_source_keyring }} {{ apt_source_keyring }}.asc
-    creates: '{{ apt_source_keyring }}'
+  changed_when: true
 
 # enabled: true is the load-bearing part — it also revives a source that a
 # release upgrade disabled, which is the failure this role exists to prevent.

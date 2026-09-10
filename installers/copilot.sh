@@ -36,19 +36,21 @@ refresh_cache=0
 
 # ── 1. GitHub CLI keyring ─────────────────────────────────────────────────────
 echo "[1/4] GitHub CLI keyring"
-if [[ -f "$gh_keyring_path" ]]; then
-  echo "      already present, skipping."
+tmpkey=$(mktemp)
+trap 'rm -f "$tmpkey"' EXIT
+# -f so an HTTP error fails the script instead of installing an error page
+# as the signing key.
+curl -fsSL --retry 3 -o "$tmpkey" "$gh_keyring_url"
+if [[ -f "$gh_keyring_path" ]] && cmp -s "$tmpkey" "$gh_keyring_path"; then
+  echo "      already present and up to date, skipping."
 else
+  echo "      installing/updating keyring"
   sudo mkdir -p -m 755 /etc/apt/keyrings
-  tmpkey=$(mktemp)
-  trap 'rm -f "$tmpkey"' EXIT
-  # -f so an HTTP error fails the script instead of installing an error page
-  # as the signing key.
-  curl -fsSL --retry 3 -o "$tmpkey" "$gh_keyring_url"
   sudo install -m 0644 -o root -g root "$tmpkey" "$gh_keyring_path"
-  rm -f "$tmpkey"
-  trap - EXIT
+  refresh_cache=1
 fi
+rm -f "$tmpkey"
+trap - EXIT
 
 # ── 2. GitHub CLI APT source ──────────────────────────────────────────────────
 # Compared against the desired content rather than merely checked for existence,

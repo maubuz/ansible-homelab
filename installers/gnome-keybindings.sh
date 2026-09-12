@@ -29,6 +29,8 @@ command -v gsettings >/dev/null || {
 # against a missing schema would abort the whole script partway through.
 if gsettings list-schemas | grep -qx "org.gnome.shell.extensions.dash-to-dock"; then
   dash_to_dock=true
+  echo "dash-to-dock schema present"
+  gsettings set "org.gnome.shell.extensions.dash-to-dock" hot-keys "false"
 else
   dash_to_dock=false
   echo "dash-to-dock schema not present, skipping its app-hotkey bindings."
@@ -44,3 +46,4 @@ for i in {1..9}; do
 done
 
 echo "Done. Super+1..9 switches workspaces; Super+Shift+1..9 moves windows."
+echo "Enable in Gnome Multitask settings: Hot Corner, Window Resize, Fixed Number of Workspaces: 9"

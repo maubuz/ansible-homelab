@@ -14,9 +14,11 @@ desktop_packages:
   - ripgrep
   - gnome-shell-extension-manager
   - curl
+  - flameshot
   # includes gcc compiler, make, and other tools. Used for nvim (tree-sitter et al.)
   - build-essential
-  - flameshot
+  # Used for clipboard support in neovim
+  - wl-clipboard
 
 desktop_packages_deb:
   - gnome-tweaks

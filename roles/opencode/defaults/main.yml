@@ -1,0 +1,17 @@
+---
+# Default variables for opencode role.
+# Installs into the upstream standard ~/.opencode/bin and symlinks to ~/.local/bin
+# without privilege escalation.
+opencode_bin_dir: '{{ ansible_facts.env.HOME }}/.opencode/bin'
+opencode_bin_path: '{{ opencode_bin_dir }}/opencode'
+
+opencode_symlink_dir: '{{ ansible_facts.env.HOME }}/.local/bin'
+opencode_symlink_path: '{{ opencode_symlink_dir }}/opencode'
+
+# Official upstream GitHub repository
+opencode_github_repo: anomalyco/opencode
+
+# Target architecture matching upstream release naming conventions:
+# ansible_facts['architecture'] (x86_64) -> GitHub release asset architecture (x64)
+opencode_supported_arch: x86_64
+opencode_arch: x64

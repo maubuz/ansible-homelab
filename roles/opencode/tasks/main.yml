@@ -1,0 +1,80 @@
+---
+# Never escalates: opencode installs into the invoking user's ~/.opencode/bin,
+# and under become the gathered ansible_facts.env.HOME would be /root.
+
+- name: Ensure target directories exist
+  ansible.builtin.file:
+    path: '{{ item }}'
+    state: directory
+    mode: '0755'
+  loop:
+    - '{{ opencode_bin_dir }}'
+    - '{{ opencode_symlink_dir }}'
+
+- name: Validate supported architecture
+  ansible.builtin.assert:
+    that:
+      - ansible_facts['architecture'] == opencode_supported_arch
+    fail_msg: >-
+      Unsupported architecture: {{ ansible_facts['architecture'] }}.
+      OpenCode role currently only supports {{ opencode_supported_arch }} ({{ opencode_arch }}).
+    quiet: true
+
+# Resolve the latest release tag via GitHub's release redirect.
+# This avoids the unauthenticated GitHub API rate limit (60 req/hr).
+# check_mode: false ensures the tag is resolved even during --check dry runs.
+- name: Resolve latest OpenCode release tag
+  ansible.builtin.uri:
+    url: 'https://github.com/{{ opencode_github_repo }}/releases/latest'
+    method: HEAD
+    follow_redirects: none
+    status_code: [301, 302]
+  register: opencode_latest_release
+  check_mode: false
+
+- name: Set target version fact
+  ansible.builtin.set_fact:
+    opencode_target_version: "{{ opencode_latest_release.location | regex_replace('^.*/tag/v?', '') }}"
+
+- name: Check if opencode binary exists
+  ansible.builtin.stat:
+    path: '{{ opencode_bin_path }}'
+  register: opencode_binary_stat
+
+- name: Probe installed opencode version
+  ansible.builtin.command:
+    cmd: '{{ opencode_bin_path }} --version'
+  register: opencode_current_version_cmd
+  when: opencode_binary_stat.stat.exists and opencode_binary_stat.stat.executable
+  changed_when: false
+  failed_when: false
+
+- name: Determine if installation or upgrade is needed
+  ansible.builtin.set_fact:
+    opencode_install_needed: >-
+      {{ not (opencode_binary_stat.stat.exists | default(false)) or
+         (opencode_current_version_cmd.stdout | default('') | trim != opencode_target_version) }}
+
+- name: Download and install OpenCode binary
+  ansible.builtin.unarchive:
+    src: >-
+      https://github.com/{{ opencode_github_repo }}/releases/download/v{{
+      opencode_target_version }}/opencode-linux-{{ opencode_arch }}.tar.gz
+    dest: '{{ opencode_bin_dir }}'
+    remote_src: true
+    mode: '0755'
+  when: opencode_install_needed
+
+- name: Ensure symlink exists in ~/.local/bin
+  ansible.builtin.file:
+    src: '{{ opencode_bin_path }}'
+    dest: '{{ opencode_symlink_path }}'
+    state: link
+    force: true
+
+- name: Verify OpenCode installation
+  ansible.builtin.command:
+    cmd: '{{ opencode_symlink_path }} --version'
+  register: opencode_installed_check
+  when: not ansible_check_mode
+  changed_when: false

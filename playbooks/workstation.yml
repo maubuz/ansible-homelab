@@ -10,6 +10,8 @@
   ansible.builtin.import_playbook: ansible-tools.yml
 - name: Node
   ansible.builtin.import_playbook: node.yml
+- name: AI Tools
+  ansible.builtin.import_playbook: ai-tools.yml
 - name: Wezterm
   ansible.builtin.import_playbook: wezterm.yml
 - name: Tailscale

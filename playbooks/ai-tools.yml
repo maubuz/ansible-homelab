@@ -1,0 +1,6 @@
+---
+# AI Agentic development tooling entry point.
+# Imports individual AI tool playbooks in dependency sequence so each tool
+# remains independently runnable while providing an aggregated suite.
+- name: OpenCode
+  ansible.builtin.import_playbook: opencode.yml

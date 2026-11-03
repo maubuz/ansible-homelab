@@ -19,7 +19,9 @@
 #
 # Usage:
 #   scripts/test-vm.sh create              # launch, provision and share the repo
-#   scripts/test-vm.sh run <playbook>      # run a playbook inside it
+#   scripts/test-vm.sh start               # boot it again if it is stopped
+#   scripts/test-vm.sh run <playbook> [args]   # run a playbook inside it
+#   scripts/test-vm.sh exec [--root] <cmd...>  # run a command in it, to verify
 #   scripts/test-vm.sh shell               # interactive shell in the VM
 #   scripts/test-vm.sh status              # is it running?
 #   scripts/test-vm.sh destroy             # delete it
@@ -91,10 +93,36 @@ vm_root() { lxc_ exec "$VM" -- "$@"; }
 # run creates in it owned by the invoking user on the host rather than by root.
 vm_user() { lxc_ exec "$VM" -- sudo -iu ubuntu -- "$@"; }
 
+# Run an already shell-quoted command line from the repository as the ubuntu
+# user. sudo -i re-parses its arguments through a login shell and leaves "$"
+# unescaped, so a value such as '$HOME' would expand there. Base64 carries the
+# line through untouched, and eval in the inner bash then parses it exactly once.
+vm_user_sh() {
+  local b64
+  b64=$(printf '%s' "cd '$VM_REPO' && $1" | base64 -w0)
+  vm_user bash -lc "eval \`echo $b64 | base64 -d\`"
+}
+
 vm_exists() { lxc_ info "$VM" >/dev/null 2>&1; }
 
+# The agent needs a moment after boot before exec works at all.
+wait_for_agent() {
+  for _ in {1..60}; do
+    lxc_ exec "$VM" -- true 2>/dev/null && return 0
+    sleep 2
+  done
+  die "$VM did not come up; check: lxc --project $PROJECT info $VM"
+}
+
+# A VM left stopped (host reboot, lxc stop) is started rather than reported as a
+# failure, so every command that needs it works without a manual step.
 require_vm() {
   vm_exists || die "$VM does not exist. Run: scripts/test-vm.sh create"
+  if [[ $(lxc_ info "$VM" | awk '/^Status:/ { print $2 }') != RUNNING ]]; then
+    echo "==> Starting $VM"
+    lxc_ start "$VM" </dev/null
+    wait_for_agent
+  fi
 }
 
 cmd_create() {
@@ -118,16 +146,23 @@ cmd_create() {
     --device "root,size=${VM_DISK}" </dev/null
 
   echo "==> Waiting for cloud-init"
-  # The agent needs a moment before exec works at all.
-  for _ in {1..60}; do
-    lxc_ exec "$VM" -- true 2>/dev/null && break
-    sleep 2
-  done
+  wait_for_agent
   vm_root cloud-init status --wait
 
   echo "==> Installing ansible"
   vm_root apt-get update -qq
   vm_root apt-get install -y -qq ansible git
+
+  # A fresh image has updates pending, including systemd and the kernel. Left
+  # for the bootstrap role's upgrade they restart lxd-agent partway through a
+  # run, which kills the lxc exec session (exit 129) while the playbook carries
+  # on unobserved. Apply them here and restart once, so the first run starts
+  # from a settled system and its session survives.
+  echo "==> Applying pending updates and restarting"
+  vm_root env DEBIAN_FRONTEND=noninteractive apt-get dist-upgrade -y -qq
+  lxc_ restart "$VM" </dev/null
+  wait_for_agent
+  vm_root cloud-init status --wait
 
   # The syncthing role enables a *user* systemd service, which needs a
   # persistent user manager. Without lingering there is no session for a
@@ -161,7 +196,38 @@ Check lxd-agent:  lxc exec $VM --project $PROJECT -- systemctl status lxd-agent"
 cmd_run() {
   require_vm
   [[ $# -gt 0 ]] || die "run needs a playbook, e.g. scripts/test-vm.sh run python"
-  vm_user bash -lc "cd '$VM_REPO' && scripts/run-playbook.sh $*"
+  # printf %q keeps each argument whole through bash -c, so values containing
+  # spaces or quotes (-e 'key=a b') reach the wrapper as the caller wrote them.
+  local args
+  printf -v args '%q ' "$@"
+  vm_user_sh "scripts/run-playbook.sh $args"
+}
+
+# Run one command in the VM, from the repository directory, and return its exit
+# code, so a test can check the machine without an interactive shell. As the
+# unprivileged user by default, which is how a real run happens; --root for what
+# only root can read or change (/etc/sudoers.d, deleting accounts).
+cmd_exec() {
+  local root=false
+  if [[ ${1:-} == --root ]]; then
+    root=true
+    shift
+  fi
+  [[ $# -gt 0 ]] || die "exec needs a command, e.g. scripts/test-vm.sh exec getent passwd ansiblebot"
+  require_vm
+  local args
+  printf -v args '%q ' "$@"
+  if $root; then
+    vm_root bash -c "cd '$VM_REPO' && exec $args"
+  else
+    vm_user_sh "exec $args"
+  fi
+}
+
+cmd_start() {
+  vm_exists || die "$VM does not exist. Run: scripts/test-vm.sh create"
+  require_vm
+  echo "$VM is running"
 }
 
 cmd_shell() {
@@ -189,7 +255,9 @@ shift
 case "$command" in
   create) cmd_create "$@" ;;
   share) cmd_share "$@" ;;
+  start) cmd_start "$@" ;;
   run) cmd_run "$@" ;;
+  exec) cmd_exec "$@" ;;
   shell) cmd_shell "$@" ;;
   status) cmd_status "$@" ;;
   destroy) cmd_destroy "$@" ;;

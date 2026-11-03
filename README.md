@@ -133,7 +133,8 @@ to someone (or something) helping to debug a failure.
 ## Docs
 
 - [docs/running.md](docs/running.md): the wrapper, logs, credentials, dry runs, troubleshooting, linting
-- [docs/testing.md](docs/testing.md): the throwaway VM and what it cannot cover
+- [docs/testing.md](docs/testing.md): the throwaway VM, how to test a change, and what it cannot cover
+- [docs/testing-unattended.md](docs/testing-unattended.md): VM scenarios for the `ansiblebot` account, keys, and the pull and controller paths
 - [docs/execution-model.md](docs/execution-model.md): interactive vs unattended, running from a controller, adding a host type
 
 ## Contributing conventions

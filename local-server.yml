@@ -1,0 +1,16 @@
+---
+# ansible-pull entry point for a server: local.yml plus the ansiblebot account.
+#
+# Run it as the first pull on a server. Later pulls can run as ansiblebot, and a
+# controller can reach the host over SSH as well. Never run it on a desktop: it
+# grants passwordless root to the keys in ansiblebot_keys. A desktop pulls
+# local.yml instead.
+#
+# hosts: all for the same reason as local.yml: ansible-pull's generated inventory
+# holds only this machine, with no groups.
+- name: Bootstrap server host
+  hosts: all
+  become: false
+  roles:
+    - bootstrap
+    - ansiblebot

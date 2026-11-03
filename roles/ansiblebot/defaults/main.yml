@@ -1,0 +1,9 @@
+---
+# System account used for unattended runs on servers. Its privilege comes from
+# the sudoers rule alone; it joins no supplementary groups.
+ansiblebot_user: ansiblebot
+# Public keys allowed to log in as ansiblebot, one per controller. Deliberately
+# empty: the role asserts it is set (see group_vars/all.yml), because the
+# authorized_key task is exclusive and an empty list would otherwise remove every
+# key from the account.
+ansiblebot_keys: []

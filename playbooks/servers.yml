@@ -1,6 +1,7 @@
 ---
-- name: Bootstrap servers
+- name: Configure servers
   hosts: servers
   become: false
   roles:
     - bootstrap
+    - ansiblebot

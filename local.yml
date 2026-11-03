@@ -2,6 +2,9 @@
 # Default playbook for ansible-pull, which runs local.yml from the repository
 # root unless told otherwise.
 #
+# Safe on any host, desktops included: it upgrades packages and nothing more. A
+# server that should also get the ansiblebot account pulls local-server.yml.
+#
 # hosts: all rather than a group name — ansible-pull generates its own inventory
 # containing just the machine it is running on, so a group from inventory.ini
 # would not match.

@@ -7,7 +7,7 @@
 # Without that it reports every community.general and ansible.posix task as an
 # unresolvable module.
 #
-#   ansible-lint playbooks/ roles/ local.yml site.yml
+#   ansible-lint playbooks/ roles/ local.yml local-server.yml site.yml
 #
 # state: latest rather than present, matching uv in the python role. Nothing
 # upgrades pipx packages for us — the bootstrap role's system upgrade does not

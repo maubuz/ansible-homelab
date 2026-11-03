@@ -20,15 +20,6 @@
     name: '{{ desktop_packages }}'
     state: present
 
-- name: Install specific packages (RedHat based)
-  become: true
-  ansible.builtin.package:
-    name: '{{ desktop_packages_redhat }}'
-    state: present
-  when:
-    - ansible_facts['os_family'] == "RedHat"
-    - desktop_packages_redhat | length > 0
-
 - name: Install specific packages (Deb based)
   become: true
   ansible.builtin.package:

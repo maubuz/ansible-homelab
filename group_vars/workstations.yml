@@ -28,9 +28,6 @@ desktop_packages_deb:
   - rustc
   - cargo
 
-desktop_packages_redhat:
-  - gnome-pomodoro
-
 desktop_snaps:
   - chromium
   - chromium-ffmpeg

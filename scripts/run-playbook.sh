@@ -7,18 +7,25 @@
 # troubleshoot — after the fact instead of only being watched live.
 #
 # Usage:
-#   scripts/run-playbook.sh [--check] <playbook> [extra ansible-playbook args]
+#   scripts/run-playbook.sh [--check] [--unattended] <playbook> [extra ansible-playbook args]
 #
 # Examples:
 #   scripts/run-playbook.sh playbooks/wezterm.yml
 #   scripts/run-playbook.sh --check wezterm      # substring match, dry run
 #   scripts/run-playbook.sh local.yml --tags install
 #   scripts/run-playbook.sh npm -vv              # extra verbosity
+#   scripts/run-playbook.sh --unattended servers # from a controller, over SSH as ansiblebot
 #
 # A playbook that escalates is prompted for with --ask-become-pass and therefore
 # needs a terminal; without one the script exits 2 rather than hanging. The sudo
 # password is never read from, or written to, a file. Playbooks that do not
 # escalate (become: false) need no credentials and run unattended.
+#
+# --unattended never prompts, for runs where the targets grant passwordless sudo
+# (the ansiblebot account) — typically a controller driving remote hosts over
+# SSH. The local sudo policy checked below says nothing about those hosts, so
+# without this flag a controller with a password-protected sudo would prompt for
+# a password the remote hosts never ask for, or exit 2 with no terminal.
 
 set -euo pipefail
 
@@ -40,11 +47,13 @@ usage() {
 # ── Arguments ─────────────────────────────────────────────────────────────────
 playbook=""
 extra=()
+unattended=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -h | --help) usage 0 ;;
     -C | --check) extra+=(--check) ;;
+    --unattended) unattended=true ;;
     --) shift; extra+=("$@"); break ;;
     -*) extra+=("$1") ;;
     # Exactly one playbook per run. A second bare word is almost always a typo,
@@ -130,7 +139,7 @@ run_escalates() {
 }
 
 become_args=()
-if ! $inspect_only && run_escalates "$playbook"; then
+if ! $inspect_only && ! $unattended && run_escalates "$playbook"; then
   if sudo_is_passwordless; then
     : # nothing to prompt for, so the run works unattended
   elif [[ -t 0 ]]; then

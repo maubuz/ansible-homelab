@@ -1,0 +1,50 @@
+---
+# Provisions the account that unattended runs use: from a controller over SSH, or
+# from ansible-pull on the host. Applied only by server playbooks (servers.yml,
+# local-server.yml), never by anything a desktop runs, because it grants
+# passwordless root to whoever holds one of the keys.
+
+# Fail before changing anything: the authorized_key task below is exclusive, so
+# an empty list would delete every key and lock the controller out.
+- name: Check the required variables are set
+  ansible.builtin.assert:
+    that: ansiblebot_keys | default([], true) | length > 0
+    fail_msg: >-
+      ansiblebot_keys must list at least one public key. Set it in
+      group_vars/all.yml; see "Adding a server" in the README.
+    quiet: true
+
+- name: Create ansible user
+  become: true
+  ansible.builtin.user:
+    name: "{{ ansiblebot_user }}"
+    system: true
+    state: present
+    password: '!' # disable password
+    # No supplementary groups. Privilege comes from the sudoers rule below and
+    # nothing else; membership of the root group granted this account standing
+    # read access to root-group files on top of that, which it never needed. An
+    # empty string here also strips the membership on hosts an earlier version
+    # of this role already provisioned.
+    groups: ''
+    append: false
+    shell: /bin/bash  # Avoid default of sh (see SHELL in /etc/default/useradd)
+
+# exclusive makes the list the whole truth: removing a key from it revokes that
+# key on the next run, which is what rotating a controller's key needs.
+- name: Set public ssh keys for ansible user
+  become: true
+  ansible.posix.authorized_key:
+    user: "{{ ansiblebot_user }}"
+    state: present
+    exclusive: true
+    key: "{{ ansiblebot_keys | join('\n') }}"
+
+- name: Add ansible role to sudoers list
+  become: true
+  ansible.builtin.copy:
+    src: sudoer_ansiblebot
+    dest: "/etc/sudoers.d/{{ ansiblebot_user }}"
+    owner: root
+    group: root
+    mode: '0440'

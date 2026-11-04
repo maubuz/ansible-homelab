@@ -8,4 +8,5 @@
 # Generate one with:
 #     ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519_ansiblebot -C "ansiblebot@$(hostname)"
 # then paste the contents of the .pub file below.
-ansiblebot_keys: []
+ansiblebot_keys:
+    - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINm78pO0pVOicB1iI7DfKGg/GhXx+pDvLvieO2jnDsRt ansiblebot@t14

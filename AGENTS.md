@@ -32,3 +32,17 @@ GNOME and desktop-session playbooks (`gnome.yml`, `installers/gnome-keybindings.
 - `workstation.yml` order matters only for `python` (pipx) before `ansible-tools` and `gnome_extensions`.
 - `opencode` supports one architecture (`opencode_supported_arch`); override it per group before targeting a Raspberry Pi.
 - Commits use Conventional Commits.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues for `maubuz/ansible-homelab` (via the `gh` CLI). See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default vocabulary: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `GLOSSARY.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.

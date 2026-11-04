@@ -1,0 +1,32 @@
+# {{ ansible_managed }}
+# Sandbox for the system instance only. Personal instances keep the packaged
+# unit's hardening, because ProtectHome would break them.
+[Service]
+# 0007 makes the GUI socket group-accessible, so members of the
+# {{ server_syncthing_account }} group (the admin users) can connect.
+UMask=0007
+# The system instance's folders live under {{ server_syncthing_root }}, so skip
+# the default ~/Sync folder Syncthing creates on first start.
+Environment=STNODEFAULTFOLDER=1
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths={{ server_syncthing_home }} {{ server_syncthing_root }}
+# Found with `systemd-analyze security`. The daemon needs only its own files and
+# network sockets, so everything else is closed off.
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+ProtectProc=invisible
+ProcSubset=pid
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+CapabilityBoundingSet=
+# No SystemCallFilter: `~@privileged @resources` made the daemon exit 255 on
+# Syncthing 1.29.5.

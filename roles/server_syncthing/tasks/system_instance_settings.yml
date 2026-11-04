@@ -1,0 +1,28 @@
+---
+# Only the system instance is configured here, because it is the one that talks
+# to other networks. Personal instances keep Syncthing's defaults.
+# Set over the GUI socket as the service account: `runuser` from a root task
+# avoids Ansible's unprivileged-become tempfile problem.
+- name: Wait for the system instance's GUI socket
+  become: true
+  ansible.builtin.wait_for:
+    path: '/run/syncthing-{{ server_syncthing_account }}/gui.sock'
+    timeout: 60
+
+- name: Read the system instance's network settings
+  become: true
+  ansible.builtin.command:
+    argv: "{{ server_syncthing_cli + ['config', 'options', item, 'get'] }}"
+  loop: '{{ server_syncthing_settings.keys() | list }}'
+  register: server_syncthing_current
+  changed_when: false
+
+- name: Turn off what the system instance does not need
+  become: true
+  ansible.builtin.command:
+    argv: "{{ server_syncthing_cli + ['config', 'options', item.item, 'set', server_syncthing_settings[item.item]] }}"
+  loop: '{{ server_syncthing_current.results }}'
+  loop_control:
+    label: '{{ item.item }}'
+  when: item.stdout | trim != server_syncthing_settings[item.item]
+  changed_when: true

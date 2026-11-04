@@ -1,0 +1,20 @@
+---
+# Internal to the role; not meant to be overridden.
+# The address goes in the environment because Syncthing 1.29's
+# `cli --gui-address=unix://...` fails to parse the URL, while the variable works
+# and lets the command read the API key from the instance's config.xml.
+server_syncthing_cli:
+  - runuser
+  - -u
+  - '{{ server_syncthing_account }}'
+  - --
+  - env
+  - 'STGUIADDRESS=unix:///run/syncthing-{{ server_syncthing_account }}/gui.sock'
+  - syncthing
+  - cli
+# Strings, because `cli ... get` prints them. local-ann-enabled stays on:
+# discovery on the home network is how the phone finds the server.
+server_syncthing_settings:
+  global-ann-enabled: 'false'
+  relays-enabled: 'false'
+  natenabled: 'false'

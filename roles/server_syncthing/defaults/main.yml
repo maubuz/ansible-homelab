@@ -1,0 +1,10 @@
+---
+# Users who get a personal instance. Also set in group_vars/all.yml, which wins
+# there; this default keeps the role runnable on its own.
+server_syncthing_users: []
+# The service account the system instance runs as. Not a person; no login.
+server_syncthing_account: syncthing
+# Where the system instance keeps its synced folders.
+server_syncthing_root: /srv/syncthing
+# The service account's home: its config, TLS identity and database.
+server_syncthing_home: /var/lib/{{ server_syncthing_account }}

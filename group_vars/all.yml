@@ -33,8 +33,12 @@ baseline_snaps:
     - nordvpn
 baseline_snaps_classic:
     - nvim
-# The named admin user on servers: the person Syncthing runs as (the
-# server_syncthing role). Set here rather than in group_vars/servers.yml because
-# ansible-pull ignores that file. The role fails until it is set, and the user
-# must already exist.
+# The admin user on servers: the person who administers Syncthing (the
+# server_syncthing role) and so belongs to its service account's group. Set here
+# rather than in group_vars/servers.yml because ansible-pull ignores that file.
+# The role fails until it is set, and the user must already exist.
 server_admin_user: 'mau'
+# Users who each get a personal Syncthing instance on a server (their own
+# folders and GUI). The users must already exist. Add 'mau' here only if the
+# admin wants one too.
+server_syncthing_users: []

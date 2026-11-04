@@ -1,22 +1,45 @@
 ---
-# Runs Syncthing as a *system* service for the named admin user
-# (syncthing@<user>), not as a user service. The workstation syncthing role
-# needs that user's own systemd instance, which does not exist under ansiblebot
-# or ansible-pull; the system service starts at boot with no session at all.
+# Syncthing on a server: one *system instance* (syncthing@syncthing, running as
+# the dedicated service account) plus a *personal instance* (syncthing@<user>)
+# for each user in server_syncthing_users. System services, not user services:
+# the workstation syncthing role needs the user's own systemd instance, which
+# does not exist under ansiblebot or ansible-pull, and a system service starts
+# at boot with no session at all.
 #
-# The web UI listens on 127.0.0.1:8384 only. Reach it through an SSH tunnel.
+# The role manages only the OS side. Devices and folders are set up by hand in
+# each instance's GUI, which is a Unix socket (docs/syncthing-server.md).
 - name: Check the required variables are set
   ansible.builtin.assert:
-    that: server_admin_user | default('', true) | length > 0
+    that:
+      - server_admin_user | default('', true) | length > 0
+      - server_syncthing_users is sequence
+      - server_syncthing_users is not string
+      - server_syncthing_account != server_admin_user
+      - server_syncthing_account not in server_syncthing_users
     fail_msg: >-
-      server_admin_user must name the user Syncthing runs as. Set it in
-      group_vars/all.yml; the user must already exist.
+      server_admin_user must name the person who administers Syncthing,
+      server_syncthing_users must be a list, and neither may name the service
+      account ({{ server_syncthing_account }}). Set them in group_vars/all.yml;
+      the users must already exist.
     quiet: true
 
-- name: Check the admin user exists
+- name: Look up the admin user and the users with a personal instance
   ansible.builtin.getent:
     database: passwd
-    key: '{{ server_admin_user }}'
+    key: '{{ item }}'
+    fail_key: false
+  loop: '{{ [server_admin_user] + server_syncthing_users }}'
+  register: server_syncthing_lookup
+  changed_when: false
+
+- name: Check those users exist
+  ansible.builtin.assert:
+    that: item.ansible_facts.getent_passwd[item.item] is not none
+    fail_msg: 'User {{ item.item }} does not exist on this host; create it first.'
+    quiet: true
+  loop: '{{ server_syncthing_lookup.results }}'
+  loop_control:
+    label: '{{ item.item }}'
 
 - name: Install Syncthing
   become: true
@@ -25,9 +48,153 @@
     # present, not latest: upgrades are the bootstrap role's job.
     state: present
 
-- name: Enable and start the Syncthing system service
+- name: Create the service account
+  become: true
+  ansible.builtin.user:
+    name: '{{ server_syncthing_account }}'
+    system: true
+    shell: /usr/sbin/nologin
+    home: '{{ server_syncthing_home }}'
+    create_home: true
+    password: '!'
+
+- name: Keep the service account's home private
+  become: true
+  ansible.builtin.file:
+    path: '{{ server_syncthing_home }}'
+    state: directory
+    owner: '{{ server_syncthing_account }}'
+    group: '{{ server_syncthing_account }}'
+    mode: '0700'
+
+- name: Read the members of the service account's group
+  ansible.builtin.getent:
+    database: group
+    key: '{{ server_syncthing_account }}'
+    fail_key: false
+  changed_when: false
+
+# Membership of this group is what makes someone an admin: it opens the system
+# instance's GUI socket and /srv/syncthing. The list is exclusive, like the
+# ansiblebot keys, so a temporary `gpasswd -a` lapses on the next run.
+# ansible.builtin.user with append cannot remove a member, hence gpasswd.
+- name: Make the admin user the only member of the service account's group
+  become: true
+  ansible.builtin.command:
+    argv: [gpasswd, -M, '{{ server_admin_user }}', '{{ server_syncthing_account }}']
+  vars:
+    server_syncthing_members: >-
+      {{ ((ansible_facts.getent_group[server_syncthing_account] | default([], true))[2]
+          | default('', true)) | split(',') | select | sort | list }}
+  when: server_syncthing_members != [server_admin_user]
+  changed_when: true
+
+- name: Create the system instance's data directory
+  become: true
+  ansible.builtin.file:
+    path: '{{ server_syncthing_root }}'
+    state: directory
+    owner: '{{ server_syncthing_account }}'
+    group: '{{ server_syncthing_account }}'
+    mode: '0750'
+
+- name: Create the systemd drop-in directories
+  become: true
+  ansible.builtin.file:
+    path: '/etc/systemd/system/{{ item }}.d'
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  loop:
+    - syncthing@.service
+    - 'syncthing@{{ server_syncthing_account }}.service'
+
+- name: Give every instance a private GUI socket
+  become: true
+  ansible.builtin.template:
+    src: 10-gui-socket.conf.j2
+    dest: /etc/systemd/system/syncthing@.service.d/10-gui-socket.conf
+    owner: root
+    group: root
+    mode: '0644'
+  register: server_syncthing_socket_dropin
+  notify: Reload systemd
+
+- name: Sandbox the system instance
+  become: true
+  ansible.builtin.template:
+    src: 20-system-instance.conf.j2
+    dest: '/etc/systemd/system/syncthing@{{ server_syncthing_account }}.service.d/20-system-instance.conf'
+    owner: root
+    group: root
+    mode: '0644'
+  register: server_syncthing_system_dropin
+  notify: Reload systemd
+
+- name: Apply the drop-ins before any instance starts
+  ansible.builtin.meta: flush_handlers
+
+# System instance first. Syncthing picks free GUI and listen ports on its first
+# start, so the system instance must already hold 22000 when a personal
+# instance is created.
+- name: Enable and start the system instance
   become: true
   ansible.builtin.systemd_service:
-    name: 'syncthing@{{ server_admin_user }}'
+    name: 'syncthing@{{ server_syncthing_account }}'
     enabled: true
     state: started
+  register: server_syncthing_system_started
+
+- name: Enable and start the personal instances
+  become: true
+  ansible.builtin.systemd_service:
+    name: 'syncthing@{{ item }}'
+    enabled: true
+    state: started
+  loop: '{{ server_syncthing_users }}'
+  register: server_syncthing_personal_started
+
+# A running instance keeps its old environment and sandbox until restarted.
+- name: Restart the instances to pick up changed drop-ins
+  become: true
+  ansible.builtin.systemd_service:
+    name: 'syncthing@{{ item }}'
+    state: restarted
+  loop: '{{ [server_syncthing_account] + server_syncthing_users }}'
+  when:
+    - server_syncthing_socket_dropin is changed or server_syncthing_system_dropin is changed
+    - item not in server_syncthing_just_started
+  vars:
+    server_syncthing_just_started: >-
+      {{ ([server_syncthing_account] if server_syncthing_system_started is changed else [])
+         + (server_syncthing_personal_started.results | selectattr('changed') | map(attribute='item') | list) }}
+
+- name: List the Syncthing instances that are enabled or running
+  become: true
+  ansible.builtin.shell:
+    cmd: |
+      set -o pipefail
+      {
+        systemctl list-unit-files 'syncthing@*.service' --state=enabled --plain --no-legend
+        systemctl list-units 'syncthing@*.service' --state=active --plain --no-legend
+      } | awk '{print $1}' | sed -n 's/^syncthing@\(.\+\)\.service$/\1/p' | sort -u
+    executable: /bin/bash
+  register: server_syncthing_found
+  changed_when: false
+  check_mode: false
+
+# This removes a legacy syncthing@<admin> and covers users dropped from the
+# list. It never deletes config or data, so re-adding a user restores them.
+- name: Stop and disable every other instance
+  become: true
+  ansible.builtin.systemd_service:
+    name: 'syncthing@{{ item }}'
+    enabled: false
+    state: stopped
+  loop: '{{ server_syncthing_found.stdout_lines | difference([server_syncthing_account] + server_syncthing_users) }}'
+
+- name: Configure the system instance's network settings
+  ansible.builtin.include_tasks: system_instance_settings.yml
+  # The commands below do not run in check mode, and the socket may not exist.
+  when: not ansible_check_mode

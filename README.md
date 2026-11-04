@@ -111,7 +111,8 @@ on the host has `node`, `uv` and the rest. Set `server_admin_user` in
 `server_syncthing_users` the users who each get their own Syncthing instance; the
 run fails until the admin is set. Syncthing runs as a dedicated `syncthing`
 account, with a GUI on a Unix socket per instance: see
-[docs/syncthing-server.md](docs/syncthing-server.md). After the first run, `sudo tailscale up` is still a manual step. See
+[docs/syncthing-server.md](docs/syncthing-server.md). After the first run,
+`sudo tailscale up` is still a manual step. See
 [docs/execution-model.md](docs/execution-model.md).
 
 ## Layout

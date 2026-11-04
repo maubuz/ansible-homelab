@@ -10,6 +10,7 @@ Ansible for a personal homelab. Targets Ubuntu 24.04+ only (26.04 preferred), ac
 - The `ansiblebot` account (root-equivalent) belongs only in `servers.yml` and `local-server.yml`, never in `local.yml` or a workstation playbook; `local.yml` is what desktops pull. The role fails unless `ansiblebot_keys` (group_vars/all.yml) is non-empty; its `authorized_key` is exclusive, so removing an entry revokes that key. Only public keys belong in the repo.
 - From a controller, target `playbooks/servers.yml`; `local*.yml` use `hosts: all` and would also match `localhost`.
 → Before changing escalation, `$HOME` paths or the unattended set, read `docs/execution-model.md`.
+→ Syncthing on servers (system instance, personal instances, socket GUIs): `docs/syncthing-server.md`.
 
 ## Running
 - Run playbooks through `scripts/run-playbook.sh <substring>`: one playbook per run, ansible args after `--`. Flags with values need `--` or `--flag=value`.

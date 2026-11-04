@@ -26,7 +26,7 @@ their own roles, which install system-wide and escalate per task:
 | `desktop` (`desktop_*`) | `server_packages` (reads `baseline_*`) |
 | `node`: nvm in `~/.nvm` | `server_node`: NodeSource apt repository, `/usr/bin/node` |
 | `python`: uv in `~/.local` | `server_python`: uv in `/opt/pipx`, linked into `/usr/local/bin` |
-| `syncthing`: user service | `server_syncthing`: `syncthing@<server_admin_user>` system service |
+| `syncthing`: user service | `server_syncthing`: system instance `syncthing@syncthing` plus `syncthing@<user>` personal instances |
 
 `wezterm` and `tailscale` are plain apt installs and serve both sides. The two
 sides never share a variable name; only `baseline_*` in `group_vars/all.yml` is
@@ -38,12 +38,14 @@ common, and each side composes its own list from it.
 tasks of its own. `playbooks/servers.yml` and `local-server.yml` both apply just
 this role, so a pulling server and a controller-managed one cannot drift apart.
 `server_syncthing` runs right after `ansiblebot` so a missing `server_admin_user`
-fails before the long installs. The wrapper follows these dependencies when it
+(the person who administers Syncthing; a member of the `syncthing` group, not the
+user it runs as) fails before the long installs. The model is in
+[syncthing-server.md](syncthing-server.md). The wrapper follows these dependencies when it
 decides whether a run escalates.
 
 `ansible-pull` generates an inventory with no groups, so it never loads
 `group_vars/servers.yml`. Values a server role needs on a pull (`baseline_*`,
-`server_admin_user`) live in `group_vars/all.yml` or the role's defaults.
+`server_admin_user`, `server_syncthing_users`) live in `group_vars/all.yml` or the role's defaults.
 Moving Node to a newer LTS line is a manual edit of `server_node_major`; nvm on
 workstations follows the LTS by itself.
 

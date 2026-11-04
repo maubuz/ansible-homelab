@@ -106,12 +106,26 @@ sudo_is_passwordless() {
   sudo -n -l 2>/dev/null | grep -q 'NOPASSWD: ALL'
 }
 
+# Whether a role, or any role it depends on (meta/main.yml), escalates.
+role_escalates() {
+  local name=$1 seen=${2:-} dep
+  [[ $seen == *"|$name|"* ]] && return 1
+  seen="${seen}|${name}|"
+  [[ -d "roles/$name/tasks" ]] &&
+    grep -rqE '^[[:space:]]*become:[[:space:]]*(true|yes)' "roles/$name/tasks" && return 0
+  [[ -f "roles/$name/meta/main.yml" ]] || return 1
+  while read -r dep; do
+    role_escalates "$dep" "$seen" && return 0
+  done < <(sed -nE 's/^[[:space:]]*-[[:space:]]+role:[[:space:]]*([a-z0-9_]+)[[:space:]]*$/\1/p' "roles/$name/meta/main.yml")
+  return 1
+}
+
 # Whether anything in this run escalates. Escalation lives in the roles, not in
 # the playbook — the plays are all "become: false" and each role puts
 # "become: true" on the tasks that need root — so grepping the playbook alone
 # finds nothing and the prompt would be skipped, failing the run part-way
-# through. Follow the playbook to its roles, and through any playbook it
-# imports, then grep those task files too.
+# through. Follow the playbook to its roles (and the roles those depend on), and
+# through any playbook it imports, then grep those task files too.
 run_escalates() {
   local file=$1 seen=${2:-}
   [[ $seen == *"|$file|"* ]] && return 1
@@ -122,8 +136,7 @@ run_escalates() {
   local name
   # Roles named under a "roles:" list, and any role pulled in by include_role.
   while read -r name; do
-    [[ -d "roles/$name/tasks" ]] || continue
-    grep -rqE '^[[:space:]]*become:[[:space:]]*(true|yes)' "roles/$name/tasks" && return 0
+    role_escalates "$name" && return 0
   done < <(sed -nE 's/^[[:space:]]*-[[:space:]]+([a-z0-9_]+)[[:space:]]*$/\1/p;
                     s/^[[:space:]]*name:[[:space:]]*([a-z0-9_]+)[[:space:]]*$/\1/p' "$file")
 

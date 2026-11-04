@@ -5,8 +5,8 @@ Two modes, and three ways to start them.
 | Mode | Who escalates | Started by | Applies |
 | --- | --- | --- | --- |
 | **Interactive** | The person at the machine, typing their sudo password | `scripts/run-playbook.sh <playbook>` on the target itself | `playbooks/workstation.yml` and its parts |
-| **Unattended, pull** | `ansiblebot`, passwordless | `ansible-pull` on the target | `local-server.yml` (`bootstrap` + `ansiblebot`), or `local.yml` (`bootstrap`) on a host that needs no account |
-| **Unattended, controller** | `ansiblebot`, passwordless | `scripts/run-playbook.sh --unattended servers` from another machine, over SSH | `playbooks/servers.yml` (`bootstrap` + `ansiblebot`) |
+| **Unattended, pull** | `ansiblebot`, passwordless | `ansible-pull` on the target | `local-server.yml` (the `server` role), or `local.yml` (`bootstrap`) on a host that needs no account |
+| **Unattended, controller** | `ansiblebot`, passwordless | `scripts/run-playbook.sh --unattended servers` from another machine, over SSH | `playbooks/servers.yml` (the `server` role) |
 
 ## Why plays never escalate
 
@@ -15,10 +15,37 @@ root. Play-level `become` also applies to fact gathering, where `sudo -H`
 rewrites `HOME` to `/root`, so any path built from `ansible_facts.env.HOME`
 silently points at the wrong home.
 
-`node`, `opencode` and `gnome_extensions` never escalate and resolve paths from
-`ansible_facts.env.HOME`. They install into the home of whoever connects, which
-is right for a person at a workstation and wrong for a daemon account: run as
-`ansiblebot`, they would provision `/home/ansiblebot`.
+`node`, `python`, `syncthing`, `opencode` and `gnome_extensions` install into the
+home of whoever connects (nvm, `pipx ensurepath`, a user systemd service). That is
+right for a person at a workstation and wrong for a daemon account: run as
+`ansiblebot`, they would provision `/home/ansiblebot`. Servers therefore have
+their own roles, which install system-wide and escalate per task:
+
+| Workstation (per user) | Server (system-wide) |
+| --- | --- |
+| `desktop` (`desktop_*`) | `server_packages` (reads `baseline_*`) |
+| `node`: nvm in `~/.nvm` | `server_node`: NodeSource apt repository, `/usr/bin/node` |
+| `python`: uv in `~/.local` | `server_python`: uv in `/opt/pipx`, linked into `/usr/local/bin` |
+| `syncthing`: user service | `server_syncthing`: `syncthing@<server_admin_user>` system service |
+
+`wezterm` and `tailscale` are plain apt installs and serve both sides. The two
+sides never share a variable name; only `baseline_*` in `group_vars/all.yml` is
+common, and each side composes its own list from it.
+
+## The `server` role
+
+`roles/server/meta/main.yml` lists everything a server gets, in order, and has no
+tasks of its own. `playbooks/servers.yml` and `local-server.yml` both apply just
+this role, so a pulling server and a controller-managed one cannot drift apart.
+`server_syncthing` runs right after `ansiblebot` so a missing `server_admin_user`
+fails before the long installs. The wrapper follows these dependencies when it
+decides whether a run escalates.
+
+`ansible-pull` generates an inventory with no groups, so it never loads
+`group_vars/servers.yml`. Values a server role needs on a pull (`baseline_*`,
+`server_admin_user`) live in `group_vars/all.yml` or the role's defaults.
+Moving Node to a newer LTS line is a manual edit of `server_node_major`; nvm on
+workstations follows the LTS by itself.
 
 ## The `ansiblebot` account
 
@@ -48,7 +75,7 @@ that machine, so the playbooks use `hosts: all`. Two entry points:
 | Entry point | Roles | Use on |
 | --- | --- | --- |
 | `local.yml` | `bootstrap` | Any host, desktops included. Upgrades packages and nothing more |
-| `local-server.yml` | `bootstrap`, `ansiblebot` | Servers only. Also creates the `ansiblebot` account |
+| `local-server.yml` | the `server` role | Servers only. Also creates the `ansiblebot` account and installs the server tooling |
 
 The first pull on a server runs as an existing admin user, with a sudo password
 (`--ask-become-pass`). It creates `ansiblebot`. Later pulls can run as `ansiblebot`

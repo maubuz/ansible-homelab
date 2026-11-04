@@ -9,7 +9,7 @@ servers, GPU workstations and Raspberry Pis.
 | Host type | Inventory group | Mode | Status |
 | --- | --- | --- | --- |
 | Laptop or workstation with a desktop | `workstations` | Interactive | Working |
-| Laptop server, Raspberry Pi | `servers` | Unattended (pull or controller) | `bootstrap` + `ansiblebot` roles only |
+| Laptop server, Raspberry Pi | `servers` | Unattended (pull or controller) | Working: the `server` role (see below) |
 | GPU workstation, Raspberry Pi as its own type | own group + `group_vars` file | | Planned |
 
 Interactive means a person at the machine types their sudo password. Unattended
@@ -81,8 +81,9 @@ admin user with sudo, and SSH reachable from the controller.
    ```
 
 4. Bootstrap it once as the admin user. This creates the `ansiblebot` account,
-   installs the keys from `ansiblebot_keys`, grants passwordless sudo,
-   upgrades packages and installs avahi. `group_vars/servers.yml` sets
+   installs the keys from `ansiblebot_keys`, grants passwordless sudo, upgrades
+   packages, then installs everything in the `server` role. Syncthing runs as
+   `server_admin_user`, which must already exist on the host. `group_vars/servers.yml` sets
    `ansible_user: ansiblebot`, which does not exist yet on a fresh host, so
    override it for this run:
 
@@ -99,8 +100,13 @@ admin user with sudo, and SSH reachable from the controller.
 
    Add `-- --limit pi4.lan` to target one host.
 
-Today `servers` applies only the `bootstrap` and `ansiblebot` roles, so a server
-gets upgrades and the `ansiblebot` account and nothing else. See
+Every host type gets the `baseline_*` packages and snaps in `group_vars/all.yml`.
+A server gets them from the `server` role, which applies, in order: `bootstrap`,
+`ansiblebot`, `server_syncthing`, `server_packages`, `server_python`,
+`server_node`, `wezterm` and `tailscale`. These install system-wide, so every user
+on the host has `node`, `uv` and the rest. Set `server_admin_user` in
+`group_vars/all.yml` to the existing user Syncthing runs as; the run fails until
+you do. After the first run, `sudo tailscale up` is still a manual step. See
 [docs/execution-model.md](docs/execution-model.md).
 
 ## Layout
@@ -112,7 +118,8 @@ local-server.yml    ansible-pull entry point for a server; adds the ansiblebot a
 inventory.ini       hosts and groups
 group_vars/         per-group values: package lists, GNOME extension list
 playbooks/          one thin playbook per area; workstation.yml imports them in order
-roles/              one role per area; apt_source is shared by wezterm and tailscale
+roles/              one role per area; apt_source is shared by wezterm, tailscale and server_node;
+                    server_* roles are the system-wide counterparts of the per-user workstation roles
 installers/         shell installers not yet converted to roles
 scripts/            run-playbook.sh (the way to run playbooks), test-vm.sh
 docs/               rationale and procedures, linked below

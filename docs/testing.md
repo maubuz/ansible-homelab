@@ -41,8 +41,10 @@ Done means green on every step, for every playbook the change touches.
   exercised here; test those on the host with `--check`.
 - `ansible-pull` clones from git, so it sees only committed work. Before a
   commit, emulate a pull with `scripts/test-vm.sh run local.yml -- -i localhost, -c local`
-  (the same generated-inventory shape). After a commit, run the real thing:
-  `scripts/test-vm.sh exec ansible-pull -U file:///home/ubuntu/ansible-homelab -d /home/ubuntu/pull-checkout local.yml`.
+  (the same generated-inventory shape), or run the real thing from a throwaway
+  repository built inside the VM (`docs/testing-unattended.md`, scenario P).
+  After a commit, `scripts/test-vm.sh exec ansible-pull -U file:///home/ubuntu/ansible-homelab -d /home/ubuntu/pull-checkout local.yml`
+  works directly.
 - `local` matches two playbooks and the wrapper rejects it as ambiguous; name
   `local.yml` or `local-server`.
 - It is a VM, not a container, because the `desktop` role installs snaps and

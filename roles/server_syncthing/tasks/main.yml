@@ -14,6 +14,7 @@
       - server_admin_user | default('', true) | length > 0
       - server_syncthing_users is sequence
       - server_syncthing_users is not string
+      - server_syncthing_users is not mapping
       - server_syncthing_account != server_admin_user
       - server_syncthing_account not in server_syncthing_users
     fail_msg: >-
@@ -89,7 +90,7 @@
   when: server_syncthing_members != [server_admin_user]
   changed_when: true
 
-- name: Create the system instance's data directory
+- name: Create the system instance's synced-folder root
   become: true
   ansible.builtin.file:
     path: '{{ server_syncthing_root }}'
@@ -161,10 +162,12 @@
   ansible.builtin.systemd_service:
     name: 'syncthing@{{ item }}'
     state: restarted
-  loop: '{{ [server_syncthing_account] + server_syncthing_users }}'
+  loop: '{{ server_syncthing_instances }}'
   when:
-    - server_syncthing_socket_dropin is changed or server_syncthing_system_dropin is changed
     - item not in server_syncthing_just_started
+    - >-
+      server_syncthing_socket_dropin is changed
+      or (item == server_syncthing_account and server_syncthing_system_dropin is changed)
   vars:
     server_syncthing_just_started: >-
       {{ ([server_syncthing_account] if server_syncthing_system_started is changed else [])
@@ -192,7 +195,7 @@
     name: 'syncthing@{{ item }}'
     enabled: false
     state: stopped
-  loop: '{{ server_syncthing_found.stdout_lines | difference([server_syncthing_account] + server_syncthing_users) }}'
+  loop: '{{ server_syncthing_found.stdout_lines | difference(server_syncthing_instances) }}'
 
 - name: Configure the system instance's network settings
   ansible.builtin.include_tasks: system_instance_settings.yml

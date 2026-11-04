@@ -128,7 +128,7 @@ Always finish with the full C run, twice.
 | S1 | Converge, twice | Run 1 `failed=0`; run 2 `changed=0`, including the `cli` get-then-set tasks and group membership |
 | S2 | Accounts and units | `syncthing` is a system uid with shell `nologin` and `passwd -S` `L`. The system instance runs as `syncthing`, `@alice` and `@bob` as themselves. `syncthing@ubuntu` and `@carol` are not enabled |
 | S3 | Sandbox | `systemctl show syncthing@syncthing -p ProtectHome,ProtectSystem,ReadWritePaths,UMask`; with `nsenter -t <pid> -m`, `touch /etc/x` fails and a write under `/srv/syncthing` works. `systemd-analyze security` gives about 2.8 (system) and 8.3 (personal) |
-| S4 | Data privacy | `/srv/syncthing` is `0750 syncthing:syncthing`; `alice` and `carol` cannot list it, `ubuntu` can |
+| S4 | Data privacy | `/srv/syncthing` is `0750 syncthing:syncthing`; `alice` and `carol` cannot list it, `ubuntu` can. `alice`'s instance can write in her home |
 | S5 | Sockets | Each instance has `/run/syncthing-<name>/gui.sock`. `alice` reaches her own socket (200) and gets `000` on `bob`'s and the system's; a fresh login of `ubuntu` reaches the system socket. `ss -ltn` shows no `8384`. `ssh -L 18384:/run/syncthing-syncthing/gui.sock ubuntu@127.0.0.1` makes `curl http://localhost:18384/` work. Do not `pkill -f` the forward with the same pattern inside `bash -c` (it kills the shell) |
 | S6 | Temporary admin | `sudo gpasswd -a carol syncthing`; a login of `carol` reaches the socket. Re-run: `carol` is gone, `ubuntu` stays, and the next run is `changed=0` |
 | S7 | Network settings | On the system instance `global-ann-enabled`, `relays-enabled` and `natenabled` are `false` and `local-ann-enabled` is `true`; personal instances still have defaults (`cli` calls as `runuser -u <user> -- env STGUIADDRESS=unix:///run/syncthing-<user>/gui.sock syncthing cli config options <name> get`) |
@@ -136,6 +136,7 @@ Always finish with the full C run, twice.
 | S9 | Ports and reboot | Personal instances got ports other than `22000`. After `lxc restart ansible-test`, every instance is active and `journalctl -b -u 'syncthing@*' \| grep -ci 'address already in use'` is 0 |
 | S10 | Removal and legacy | `systemctl enable --now syncthing@ubuntu`, then run with only `bob` listed: `@ubuntu` and `@alice` are stopped and disabled, `~alice/.local/state/syncthing` is intact (check as root), and the next run is `changed=0` |
 | S11 | Fresh install | Purge `syncthing`, delete the `syncthing` user, group, `/srv/syncthing` and the drop-ins, then run C twice: the first-install path converges, `/var/lib/syncthing` has no `Sync` folder |
+| S12 | Entry points and regressions | F (controller) and P (real pull) converge twice with `vm-syncthing.yml` added; `$t run syncthing` (the user service) and `$t run desktop` still converge twice |
 
 ## Cleanup
 

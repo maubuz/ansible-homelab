@@ -66,7 +66,7 @@ ssh -N myserver-st        # leave it running
 # browse http://localhost:8384
 ```
 
-Only the owner of an instance (and, for the system instance, members of group
+Only the user an instance runs as (and, for the system instance, members of group
 `syncthing`) can open its socket. Anyone who *can* open it can administer the
 instance: the socket permissions are the access control, the GUI password is not.
 

@@ -18,3 +18,5 @@ server_syncthing_settings:
   global-ann-enabled: 'false'
   relays-enabled: 'false'
   natenabled: 'false'
+# The system instance first: it must hold port 22000 before a personal one is created.
+server_syncthing_instances: '{{ [server_syncthing_account] + server_syncthing_users }}'

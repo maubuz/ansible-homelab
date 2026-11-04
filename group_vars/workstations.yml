@@ -1,54 +1,38 @@
 ---
 # Package lists live here rather than in the desktop role's defaults because
 # they are a statement about this group of machines, not about how the role
-# works. A server group would apply the same role with a different list.
-desktop_packages:
-  - gimp
-  - inkscape
-  - fd-find
-  - git-delta
-  - fzf
-  - bat
-  - stow
-  - htop
-  - ripgrep
-  - gnome-shell-extension-manager
-  - curl
-  - flameshot
-  # includes gcc compiler, make, and other tools. Used for nvim (tree-sitter et al.)
-  - build-essential
-  # Used for clipboard support in neovim
-  - wl-clipboard
-
+# works. What every host type gets comes from baseline_* in all.yml; the
+# *_extra_* lists are what only a desktop wants. Servers have their own role
+# (server_packages) and do not read desktop_*.
+desktop_packages: "{{ baseline_packages + desktop_extra_packages }}"
+desktop_extra_packages:
+    - gimp
+    - inkscape
+    - gnome-shell-extension-manager
+    - flameshot
+    # Used for clipboard support in neovim
+    - wl-clipboard
 desktop_packages_deb:
-  - gnome-tweaks
-  # The distribution's Rust, not rustup. apt keeps these patched
-  # rustup's apt package only updates the installer, so its
-  # toolchains go stale until someone runs "rustup update" by hand.
-  - rustc
-  - cargo
-
-desktop_snaps:
-  - chromium
-  - chromium-ffmpeg
-  # Snap rather than deb: the deb suite would install alongside this one rather
-  # than replacing it.
-  - libreoffice
-  - mattermost-desktop
-  - spotify
-  - marktext
-  - slack
-  - nordvpn
-
-desktop_snaps_classic:
-  - nvim
-  - code  # vscode
-
+    - gnome-tweaks
+desktop_snaps: "{{ baseline_snaps + desktop_extra_snaps }}"
+desktop_extra_snaps:
+    - chromium
+    - chromium-ffmpeg
+    # Snap rather than deb: the deb suite would install alongside this one rather
+    # than replacing it.
+    - libreoffice
+    - mattermost-desktop
+    - spotify
+    - marktext
+    - slack
+desktop_snaps_classic: "{{ baseline_snaps_classic + desktop_extra_snaps_classic }}"
+desktop_extra_snaps_classic:
+    - code # vscode
 gnome_extensions_list:
-  - simple-timer@majortomvr.github.com   # https://github.com/MajortomVR/simple-timer-extension
-  - emoji-copy@felipeftn
-  - stopwatch@aliakseiz.github.com
-  - Vitals@CoreCoding.com                 # https://github.com/corecoding/Vitals
-  - pomodoro-timer@Oguzhankokulu.github.com
-  # Unused extensions: just-perfection-desktop@just-perfection
-  # Failed to install but was great: system-monitor-next@paradoxxx.zero.gmail.com
+    - simple-timer@majortomvr.github.com # https://github.com/MajortomVR/simple-timer-extension
+    - emoji-copy@felipeftn
+    - stopwatch@aliakseiz.github.com
+    - Vitals@CoreCoding.com # https://github.com/corecoding/Vitals
+    - pomodoro-timer@Oguzhankokulu.github.com
+    # Unused extensions: just-perfection-desktop@just-perfection
+    # Failed to install but was great: system-monitor-next@paradoxxx.zero.gmail.com

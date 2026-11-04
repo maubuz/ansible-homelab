@@ -1,0 +1,7 @@
+---
+# What every host type gets (baseline_* in group_vars/all.yml). A server that
+# needs more sets these in its own group_vars file, written as
+# "{{ baseline_packages + [...] }}".
+server_packages_apt: '{{ baseline_packages }}'
+server_packages_snaps: '{{ baseline_snaps }}'
+server_packages_snaps_classic: '{{ baseline_snaps_classic }}'

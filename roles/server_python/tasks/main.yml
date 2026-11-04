@@ -1,0 +1,22 @@
+---
+# System-wide, so every user gets the same tools. The workstation python role
+# installs per user (pipx ensurepath, uv into ~/.local) and is the wrong shape
+# for a host where the connecting account is ansiblebot.
+- name: Install python related packages
+  become: true
+  ansible.builtin.package:
+    update_cache: true
+    name: [python3-pip, pipx, python3-venv, python-is-python3]
+    state: present
+
+# PIPX_HOME and PIPX_BIN_DIR rather than "pipx --global": --global needs
+# pipx 1.5, which Ubuntu 24.04 does not ship. The environment works on every
+# version, and /usr/local/bin is on every user's PATH.
+- name: Install uv with pipx for every user
+  become: true
+  community.general.pipx:
+    name: uv
+    state: latest
+  environment:
+    PIPX_HOME: /opt/pipx
+    PIPX_BIN_DIR: /usr/local/bin

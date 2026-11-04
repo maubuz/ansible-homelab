@@ -1,0 +1,10 @@
+---
+# NodeSource publishes one repository per major line. The workstation node role
+# tracks the newest LTS through nvm; an apt line cannot, so move this to the next
+# LTS by hand (https://nodejs.org/en/about/previous-releases).
+server_node_major: 26
+server_node_repo_uri: 'https://deb.nodesource.com/node_{{ server_node_major }}.x'
+server_node_key_url: https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key
+server_node_keyring: /usr/share/keyrings/nodesource.gpg
+server_node_global_packages:
+  - typescript

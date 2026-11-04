@@ -1,0 +1,36 @@
+---
+# Node.js from NodeSource's apt repository, so it lands in /usr/bin for every
+# user. The workstation node role installs nvm into one user's home, which on a
+# server would mean /home/ansiblebot.
+- name: Add the NodeSource APT source
+  tags: setup
+  ansible.builtin.include_role:
+    name: apt_source
+  vars:
+    apt_source_name: nodesource
+    apt_source_uri: '{{ server_node_repo_uri }}'
+    # NodeSource publishes a single suite for every distribution.
+    apt_source_suites: nodistro
+    apt_source_components: main
+    apt_source_key_url: '{{ server_node_key_url }}'
+    apt_source_keyring: '{{ server_node_keyring }}'
+    apt_source_key_armoured: true
+
+# present, not latest: the repository only moves within one major line, and
+# upgrades are the bootstrap role's job. update_cache picks up the new source.
+- name: Install Node.js
+  tags: install
+  become: true
+  ansible.builtin.apt:
+    name: nodejs
+    state: present
+    update_cache: true
+
+- name: Install the global npm packages
+  tags: install
+  become: true
+  community.general.npm:
+    name: '{{ item }}'
+    global: true
+    state: present
+  loop: '{{ server_node_global_packages }}'

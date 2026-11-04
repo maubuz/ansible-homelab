@@ -10,3 +10,31 @@
 # then paste the contents of the .pub file below.
 ansiblebot_keys:
     - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINm78pO0pVOicB1iI7DfKGg/GhXx+pDvLvieO2jnDsRt ansiblebot@t14
+# Installed on every host type. Each side composes these into its own lists
+# (desktop_* in workstations.yml for the desktop role; the server_packages role
+# reads them directly), so the two never share a variable name.
+baseline_packages:
+    - fd-find
+    - git-delta
+    - fzf
+    - bat
+    - stow
+    - htop
+    - ripgrep
+    - curl
+    # includes gcc compiler, make, and other tools. Used for nvim (tree-sitter et al.)
+    - build-essential
+    # The distribution's Rust, not rustup. apt keeps these patched; rustup's apt
+    # package only updates the installer, so its toolchains go stale until someone
+    # runs "rustup update" by hand.
+    - rustc
+    - cargo
+baseline_snaps:
+    - nordvpn
+baseline_snaps_classic:
+    - nvim
+# The named admin user on servers: the person Syncthing runs as (the
+# server_syncthing role). Set here rather than in group_vars/servers.yml because
+# ansible-pull ignores that file. The role fails until it is set, and the user
+# must already exist.
+server_admin_user: 'mau'

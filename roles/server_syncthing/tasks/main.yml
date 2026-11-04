@@ -1,0 +1,33 @@
+---
+# Runs Syncthing as a *system* service for the named admin user
+# (syncthing@<user>), not as a user service. The workstation syncthing role
+# needs that user's own systemd instance, which does not exist under ansiblebot
+# or ansible-pull; the system service starts at boot with no session at all.
+#
+# The web UI listens on 127.0.0.1:8384 only. Reach it through an SSH tunnel.
+- name: Check the required variables are set
+  ansible.builtin.assert:
+    that: server_admin_user | default('', true) | length > 0
+    fail_msg: >-
+      server_admin_user must name the user Syncthing runs as. Set it in
+      group_vars/all.yml; the user must already exist.
+    quiet: true
+
+- name: Check the admin user exists
+  ansible.builtin.getent:
+    database: passwd
+    key: '{{ server_admin_user }}'
+
+- name: Install Syncthing
+  become: true
+  ansible.builtin.package:
+    name: syncthing
+    # present, not latest: upgrades are the bootstrap role's job.
+    state: present
+
+- name: Enable and start the Syncthing system service
+  become: true
+  ansible.builtin.systemd_service:
+    name: 'syncthing@{{ server_admin_user }}'
+    enabled: true
+    state: started

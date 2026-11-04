@@ -1,7 +1,8 @@
 ---
+# From a controller, over SSH as ansiblebot. The role list lives in roles/server
+# so local-server.yml (ansible-pull) applies exactly the same.
 - name: Configure servers
   hosts: servers
   become: false
   roles:
-    - bootstrap
-    - ansiblebot
+    - server

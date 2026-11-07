@@ -49,6 +49,14 @@ decides whether a run escalates.
 Moving Node to a newer LTS line is a manual edit of `server_node_major`; nvm on
 workstations follows the LTS by itself.
 
+### Laptop servers
+
+`playbooks/servers.yml` has a second play, `hosts: laptop_servers`, applying
+`server_laptop`. `laptop_servers` is a child of `servers`, so those hosts get the
+`server` role first. The role is not a dependency of `server`, and
+`local-server.yml` does not apply it, so laptop servers are push only. See
+[laptop-server.md](laptop-server.md).
+
 ## The `ansiblebot` account
 
 The `ansiblebot` role creates it: a system account with no password, authorized

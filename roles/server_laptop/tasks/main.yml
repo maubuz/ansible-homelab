@@ -1,0 +1,46 @@
+---
+# A laptop server: lid closed, no suspend. Applied by the second play in
+# playbooks/servers.yml to hosts in the laptop_servers group; group membership
+# is the only switch, there is no chassis check.
+- name: Assert the host is Debian-family with systemd
+  ansible.builtin.assert:
+    that:
+      - ansible_facts['os_family'] == 'Debian'
+      - ansible_facts['service_mgr'] == 'systemd'
+    fail_msg: "server_laptop supports Debian/Ubuntu hosts running systemd only."
+    quiet: true
+
+- name: Ensure the logind drop-in directory exists
+  become: true
+  ansible.builtin.file:
+    path: "{{ server_laptop_logind_dropin | dirname }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Configure logind to ignore the lid switch
+  become: true
+  ansible.builtin.template:
+    src: logind-lid.conf.j2
+    dest: "{{ server_laptop_logind_dropin }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart systemd-logind
+
+- name: Mask the sleep targets
+  become: true
+  ansible.builtin.systemd_service:
+    name: "{{ item }}"
+    masked: true
+  loop: "{{ server_laptop_sleep_targets }}"
+
+- name: Apply the logind restart before verifying
+  ansible.builtin.meta: flush_handlers
+
+- name: Verify the configuration
+  ansible.builtin.import_tasks: verify.yml
+  when: not ansible_check_mode
+  tags:
+    - server_laptop_verify

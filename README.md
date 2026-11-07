@@ -9,7 +9,8 @@ servers, GPU workstations and Raspberry Pis.
 | Host type | Inventory group | Mode | Status |
 | --- | --- | --- | --- |
 | Laptop or workstation with a desktop | `workstations` | Interactive | Working |
-| Laptop server, Raspberry Pi | `servers` | Unattended (pull or controller) | Working: the `server` role (see below) |
+| Laptop server | `laptop_servers` (child of `servers`) | Unattended (controller only) | Working: `server` role plus `server_laptop` ([docs/laptop-server.md](docs/laptop-server.md)) |
+| Raspberry Pi | `servers` | Unattended (pull or controller) | Working: the `server` role (see below) |
 | GPU workstation, Raspberry Pi as its own type | own group + `group_vars` file | | Planned |
 
 Interactive means a person at the machine types their sudo password. Unattended
@@ -149,6 +150,7 @@ to someone (or something) helping to debug a failure.
 - [docs/testing.md](docs/testing.md): the throwaway VM, how to test a change, and what it cannot cover
 - [docs/testing-unattended.md](docs/testing-unattended.md): VM scenarios for the `ansiblebot` account, keys, and the pull and controller paths
 - [docs/execution-model.md](docs/execution-model.md): interactive vs unattended, running from a controller, adding a host type
+- [docs/laptop-server.md](docs/laptop-server.md): laptop servers: lid action, sleep masking, tunables, rollback, BIOS prerequisite
 - [docs/syncthing-server.md](docs/syncthing-server.md): Syncthing on servers: system and personal instances, reaching a GUI, pairing, admin access
 - [docs/adr/](docs/adr/): recorded design decisions
 

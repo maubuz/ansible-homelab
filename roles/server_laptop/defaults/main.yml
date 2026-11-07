@@ -1,0 +1,14 @@
+---
+# What logind does when the lid closes, on battery, on AC and docked. "ignore"
+# keeps the server running.
+server_laptop_lid_action: ignore
+# A drop-in, so the packaged logind.conf stays untouched.
+server_laptop_logind_dropin: /etc/systemd/logind.conf.d/90-server-laptop.conf
+
+# Masked so nothing (logind, a user, a package) can suspend the machine, even
+# if something other than the lid asks for it.
+server_laptop_sleep_targets:
+  - sleep.target
+  - suspend.target
+  - hibernate.target
+  - hybrid-sleep.target

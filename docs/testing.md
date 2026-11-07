@@ -53,6 +53,10 @@ Done means green on every step, for every playbook the change touches.
 
 ## Cannot be tested here
 
+The lid switch itself: the VM can show logind reporting `ignore` and the sleep
+targets masked, not that closing a real lid keeps the machine up
+(`docs/laptop-server.md`).
+
 Anything needing a desktop session: `playbooks/gnome.yml` and
 `installers/gnome-keybindings.sh` wait for a real machine.
 

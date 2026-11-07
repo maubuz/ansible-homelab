@@ -1,6 +1,6 @@
 # Homelab
 
-Ansible configuration for a personal homelab of desktops, servers and single-board computers. This glossary covers the vocabulary of file synchronisation on servers.
+Ansible configuration for a personal homelab of desktops, servers and single-board computers. This glossary covers the vocabulary of file synchronisation on servers and of laptops run as servers.
 
 ## Language
 
@@ -27,3 +27,21 @@ _Avoid_: User service, client, second instance
 **Consuming user**:
 A user on a server who has a personal instance.
 _Avoid_: Consumer, second user
+
+## Laptop servers
+
+**Laptop server**:
+A server whose hardware is a laptop, kept running with the lid closed on mains power. It is a server first, so it gets everything every server gets.
+_Avoid_: Laptop host, lid-closed server
+
+**Lid action**:
+What the machine does when its lid closes. A laptop server's is to do nothing.
+_Avoid_: Lid behaviour, lid policy
+
+**Console blanking**:
+The text console's display switching off after a period without input, with the panel itself dark and not just showing a black image.
+_Avoid_: Screen off, screensaver, DPMS
+
+**Pending reboot**:
+A change that is written to disk but not yet in effect, because the running system started before it was made.
+_Avoid_: Needs restart

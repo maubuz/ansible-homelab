@@ -1,0 +1,59 @@
+---
+# Runs before anything is changed: console blanking is a GRUB drop-in, so GRUB
+# must be the bootloader, and nothing else may already decide consoleblank.
+- name: Assert the wanted consoleblank is a whole number of seconds
+  ansible.builtin.assert:
+    that:
+      - server_laptop_consoleblank | string is match('^[0-9]+$')
+    fail_msg: "server_laptop_consoleblank must be a whole number of seconds, got '{{ server_laptop_consoleblank }}'."
+    quiet: true
+
+- name: Look for GRUB
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  loop:
+    - "{{ server_laptop_grub_defaults }}"
+    - /usr/sbin/update-grub
+  register: server_laptop_grub_files
+
+- name: Assert GRUB is the bootloader
+  ansible.builtin.assert:
+    that:
+      - item.stat.exists
+    fail_msg: >-
+      {{ item.item }} is missing, so GRUB does not look like the bootloader.
+      Console blanking is a GRUB drop-in and cannot be applied here.
+    quiet: true
+  loop: "{{ server_laptop_grub_files.results }}"
+  loop_control:
+    label: "{{ item.item }}"
+
+- name: Read the base GRUB defaults
+  ansible.builtin.slurp:
+    src: "{{ server_laptop_grub_defaults }}"
+  register: server_laptop_grub_base
+
+- name: Assert the base GRUB defaults do not set consoleblank
+  ansible.builtin.assert:
+    that:
+      - not (server_laptop_grub_base.content | b64decode is search('(?m)^[^#\n]*consoleblank='))
+    fail_msg: >-
+      {{ server_laptop_grub_defaults }} already sets consoleblank. Remove it
+      there; this role owns the setting through {{ server_laptop_grub_dropin }}.
+    quiet: true
+
+- name: Look for other GRUB drop-ins that set consoleblank
+  ansible.builtin.find:
+    paths: "{{ server_laptop_grub_dropin_dir }}"
+    patterns: "*.cfg"
+    contains: '^[^#]*consoleblank='
+  register: server_laptop_grub_other
+
+- name: Warn about other GRUB drop-ins that set consoleblank
+  ansible.builtin.debug:
+    msg: >-
+      WARNING: {{ item.path }} also sets consoleblank. The kernel uses the last
+      value on its command line, so the winner depends on drop-in order.
+  loop: "{{ server_laptop_grub_other.files | rejectattr('path', 'equalto', server_laptop_grub_dropin) | list }}"
+  loop_control:
+    label: "{{ item.path }}"

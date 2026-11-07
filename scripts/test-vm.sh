@@ -22,6 +22,7 @@
 #   scripts/test-vm.sh start               # boot it again if it is stopped
 #   scripts/test-vm.sh run <playbook> [args]   # run a playbook inside it
 #   scripts/test-vm.sh exec [--root] <cmd...>  # run a command in it, to verify
+#   scripts/test-vm.sh reboot              # restart it and wait until it is back
 #   scripts/test-vm.sh shell               # interactive shell in the VM
 #   scripts/test-vm.sh status              # is it running?
 #   scripts/test-vm.sh destroy             # delete it
@@ -230,6 +231,16 @@ cmd_start() {
   echo "$VM is running"
 }
 
+# A real reboot, for what only a new boot applies (kernel parameters). Waits for
+# the agent and for cloud-init, as create does, so the next command is safe.
+cmd_reboot() {
+  require_vm
+  lxc_ restart "$VM" </dev/null
+  wait_for_agent
+  vm_root cloud-init status --wait
+  echo "$VM rebooted"
+}
+
 cmd_shell() {
   require_vm
   lxc_ exec "$VM" -- sudo -iu ubuntu
@@ -258,6 +269,7 @@ case "$command" in
   start) cmd_start "$@" ;;
   run) cmd_run "$@" ;;
   exec) cmd_exec "$@" ;;
+  reboot) cmd_reboot "$@" ;;
   shell) cmd_shell "$@" ;;
   status) cmd_status "$@" ;;
   destroy) cmd_destroy "$@" ;;

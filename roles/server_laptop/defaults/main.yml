@@ -12,3 +12,20 @@ server_laptop_sleep_targets:
   - suspend.target
   - hibernate.target
   - hybrid-sleep.target
+
+# Console blanking: seconds without input before the text console blanks and the
+# panel goes dark (the X230's backlight does; checked by hand). Whole seconds;
+# 0 would turn blanking off. It reaches the kernel as a boot parameter, so a
+# change needs a reboot, which the role reports but never does.
+server_laptop_consoleblank: 60
+# A drop-in, so the packaged /etc/default/grub stays untouched.
+server_laptop_grub_defaults: /etc/default/grub
+server_laptop_grub_dropin_dir: /etc/default/grub.d
+server_laptop_grub_dropin: "{{ server_laptop_grub_dropin_dir }}/90-server-laptop.cfg"
+# What update-grub generates and the bootloader reads.
+server_laptop_grub_config: /boot/grub/grub.cfg
+# A kernel line in the generated config that carries the wanted value as a whole
+# word, so 6 does not satisfy 60.
+server_laptop_grub_config_pattern: "^[[:space:]]*linux[[:space:]].*[[:space:]]consoleblank={{ server_laptop_consoleblank }}([[:space:]]|$)"
+# What the running kernel is using.
+server_laptop_consoleblank_running: /sys/module/kernel/parameters/consoleblank

@@ -1,0 +1,64 @@
+---
+# Console blanking is a kernel boot parameter, so it reaches the machine in two
+# steps: the GRUB config is regenerated now, the kernel picks it up at the next
+# boot. This file never reboots; it reports whether a reboot is still pending.
+- name: Ensure the GRUB drop-in directory exists
+  become: true
+  ansible.builtin.file:
+    path: "{{ server_laptop_grub_dropin_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Set consoleblank in a GRUB drop-in
+  become: true
+  ansible.builtin.template:
+    src: grub-consoleblank.cfg.j2
+    dest: "{{ server_laptop_grub_dropin }}"
+    owner: root
+    group: root
+    mode: "0644"
+  register: server_laptop_grub_dropin_result
+
+# Asked of the generated file, not remembered from the drop-in: a run that
+# failed after writing the drop-in left grub.cfg stale, and the template is
+# unchanged on the next run. A missing file counts as stale too.
+- name: Check the generated GRUB config for the wanted value
+  become: true
+  ansible.builtin.command:
+    argv:
+      - grep
+      - -Eq
+      - "{{ server_laptop_grub_config_pattern }}"
+      - "{{ server_laptop_grub_config }}"
+  register: server_laptop_grub_config_check
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Regenerate the GRUB config
+  become: true
+  ansible.builtin.command: update-grub
+  when: server_laptop_grub_dropin_result is changed or server_laptop_grub_config_check.rc != 0
+  changed_when: true
+
+- name: Read the consoleblank the running kernel uses
+  ansible.builtin.slurp:
+    src: "{{ server_laptop_consoleblank_running }}"
+  register: server_laptop_consoleblank_now
+
+- name: Work out whether a reboot is pending
+  ansible.builtin.set_fact:
+    server_laptop_consoleblank_active: "{{ server_laptop_consoleblank_now.content | b64decode | trim | int }}"
+    server_laptop_reboot_pending: "{{ (server_laptop_consoleblank_now.content | b64decode | trim | int) != (server_laptop_consoleblank | int) }}"
+
+- name: Report the pending reboot
+  ansible.builtin.debug:
+    msg: >-
+      {{ 'PENDING REBOOT: the running kernel has consoleblank='
+         ~ server_laptop_consoleblank_active
+         ~ ', GRUB is set to ' ~ (server_laptop_consoleblank | int)
+         ~ '. Reboot to apply it; this role never reboots.'
+         if server_laptop_reboot_pending else
+         'OK: the running kernel already uses consoleblank=' ~ server_laptop_consoleblank_active ~ '.' }}

@@ -10,6 +10,9 @@
     fail_msg: "server_laptop supports Debian/Ubuntu hosts running systemd only."
     quiet: true
 
+- name: Check console blanking can be applied, before changing anything
+  ansible.builtin.import_tasks: console_blank_preflight.yml
+
 - name: Ensure the logind drop-in directory exists
   become: true
   ansible.builtin.file:
@@ -35,6 +38,9 @@
     name: "{{ item }}"
     masked: true
   loop: "{{ server_laptop_sleep_targets }}"
+
+- name: Blank the console when idle
+  ansible.builtin.import_tasks: console_blank.yml
 
 - name: Apply the logind restart before verifying
   ansible.builtin.meta: flush_handlers

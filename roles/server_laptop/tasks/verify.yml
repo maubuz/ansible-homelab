@@ -1,5 +1,6 @@
 ---
-# Read-only checks of what is in effect, not of what was written.
+# Read-only checks of what is in effect, not of what was written. The GRUB config
+# is the exception that proves it: it is what the bootloader will read.
 - name: Read the effective logind lid settings
   ansible.builtin.command:
     cmd: >-
@@ -37,3 +38,15 @@
   loop: "{{ server_laptop_sleep_state.results }}"
   loop_control:
     label: "{{ item.item }}"
+
+- name: Check the generated GRUB config has the wanted consoleblank
+  become: true
+  ansible.builtin.command:
+    argv:
+      - grep
+      - -Eq
+      - "{{ server_laptop_grub_config_pattern }}"
+      - "{{ server_laptop_grub_config }}"
+  register: server_laptop_grub_config_verify
+  changed_when: false
+  failed_when: server_laptop_grub_config_verify.rc != 0

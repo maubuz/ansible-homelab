@@ -12,7 +12,7 @@ Ansible for a personal homelab. Targets Ubuntu 24.04+ only (26.04 preferred), ac
 → Before changing escalation, `$HOME` paths or the unattended set, read `docs/execution-model.md`.
 - `server_syncthing` manages only the OS side: a `syncthing` service account running the system instance, one `syncthing@<user>` per `server_syncthing_users`, and every GUI on a Unix socket, never a TCP port. Devices and folders are set by hand in each GUI, not in Ansible. Admin is exclusive membership of group `syncthing` (`server_admin_user`).
 - Exception: `playbooks/servers.yml` has a second play, `hosts: laptop_servers`, for `server_laptop` (push only, not in `local-server.yml`).
-→ Laptop servers (lid action, sleep masking, BIOS prerequisite): `docs/laptop-server.md`.
+→ Laptop servers (lid action, sleep masking, console blanking and its pending reboot, BIOS prerequisite): `docs/laptop-server.md`.
 → Syncthing on servers (system instance, personal instances, socket GUIs): `docs/syncthing-server.md`.
 
 ## Running

@@ -24,9 +24,12 @@ VMs live.
    repository directory, as `ubuntu` or as root, and returns its exit code
    (`exec getent passwd ansiblebot`, `exec --root visudo -c`).
 5. `git status`: the share is read-write, so a run can modify tracked files.
-6. `scripts/test-vm.sh destroy` when the session is done.
+6. `scripts/test-vm.sh reboot` restarts the VM and waits until it is back, for
+   what only a new boot applies (a kernel parameter such as `consoleblank`).
+7. `scripts/test-vm.sh destroy` when the session is done.
 
-Done means green on every step, for every playbook the change touches.
+Done means green on steps 1 to 5 for every playbook the change touches. Step 6
+is only for a change that needs a new boot to take effect.
 
 ## Facts the script does not tell you
 
@@ -54,8 +57,9 @@ Done means green on every step, for every playbook the change touches.
 ## Cannot be tested here
 
 The lid switch itself: the VM can show logind reporting `ignore` and the sleep
-targets masked, not that closing a real lid keeps the machine up
-(`docs/laptop-server.md`).
+targets masked, not that closing a real lid keeps the machine up. Likewise it can
+show the kernel running with `consoleblank=60` after a reboot, not that the panel
+goes dark (`docs/laptop-server.md`).
 
 Anything needing a desktop session: `playbooks/gnome.yml` and
 `installers/gnome-keybindings.sh` wait for a real machine.

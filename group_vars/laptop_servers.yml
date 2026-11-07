@@ -2,3 +2,4 @@
 # Tunables for laptop servers (roles/server_laptop). Push only: ansible-pull
 # ignores this file, and the pull entry point does not apply the role anyway.
 server_laptop_lid_action: ignore
+server_laptop_consoleblank: 60

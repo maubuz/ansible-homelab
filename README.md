@@ -150,7 +150,7 @@ to someone (or something) helping to debug a failure.
 - [docs/testing.md](docs/testing.md): the throwaway VM, how to test a change, and what it cannot cover
 - [docs/testing-unattended.md](docs/testing-unattended.md): VM scenarios for the `ansiblebot` account, keys, and the pull and controller paths
 - [docs/execution-model.md](docs/execution-model.md): interactive vs unattended, running from a controller, adding a host type
-- [docs/laptop-server.md](docs/laptop-server.md): laptop servers: lid action, sleep masking, console blanking, tunables, rollback, BIOS prerequisite
+- [docs/laptop-server.md](docs/laptop-server.md): laptop servers: lid action, sleep masking, console blanking, the read-only preflight, tunables, rollback, BIOS prerequisite
 - [docs/syncthing-server.md](docs/syncthing-server.md): Syncthing on servers: system and personal instances, reaching a GUI, pairing, admin access
 - [docs/adr/](docs/adr/): recorded design decisions
 

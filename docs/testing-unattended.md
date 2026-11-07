@@ -52,6 +52,29 @@ Run `$t run <playbook> -- <args>`; check with `$t exec`.
 | F | The controller path | see below | Converges as `ansiblebot`; `sshd` logs `Accepted publickey for ansiblebot` |
 | P | A real pull | see below | `local.yml` creates no account; `local-server.yml` with keys and admin user converges; without the admin user, or with an empty key list, it is red as in H and B |
 
+## LP: laptop preflight
+
+`playbooks/preflight-laptop-server.yml` is read-only and push only; the VM is its own
+controller, as in F. Put the VM in `[laptop_servers]` in `logs/vm-inventory.ini` and
+connect as `ansiblebot` (key A):
+
+```sh
+$t run --unattended preflight-laptop-server -- -i inventory.ini -i logs/vm-inventory.ini \
+  -e ansible_ssh_private_key_file=/home/ubuntu/test_a --limit 127.0.0.1
+```
+
+| # | Scenario | Green when |
+| --- | --- | --- |
+| LP1 | Fresh GRUB (remove `90-server-laptop.cfg`, then `update-grub`) | Passes, "changes 3 linux line(s)"; a second run is `changed=0 failed=0` |
+| LP2 | Role already applied (run `server_laptop` first) | Passes, "already applied" |
+| LP3 | `consoleblank` appended to `/etc/default/grub` | Fails at "already sets consoleblank" |
+| LP4 | `update-grub` moved away | Fails at "update-grub is missing" |
+| LP5 | `-e server_laptop_consoleblank=abc` | Fails at "must be a whole number" |
+| LP6 | A second drop-in sets `consoleblank` | Passes with a warning naming the file |
+| LP7 | `grub.cfg` hand-edited | Passes with the drift warning |
+| LP8 | A drop-in with an unterminated quote | Fails at "does not match the intended change" (`before_rc` 2) |
+| LP9 | Checksums of `grub.cfg`, `/etc/default/grub`, the drop-ins and the directory mtimes before and after a run | Identical |
+
 ## C: machine check
 
 The recap is not enough. As a fresh user with no profile (`$t exec --root useradd

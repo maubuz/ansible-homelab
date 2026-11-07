@@ -26,6 +26,42 @@ Laptop servers are managed by push only. `local-server.yml` (the pull entry
 point) does not apply `server_laptop`, and `ansible-pull` never reads
 `group_vars/laptop_servers.yml`.
 
+## Before the first apply
+
+A read-only preflight shows what the role will do before it first changes the
+machine. Run it after the `server` role, so the host has the `ansiblebot` account
+(root, passwordless):
+
+```sh
+scripts/run-playbook.sh --unattended preflight-laptop-server -- --limit <host>
+```
+
+It does four things, and stops with a message at the first problem:
+
+1. Runs the role's own early checks: GRUB is the bootloader, the base GRUB defaults
+   do not set `consoleblank`, and the value is a whole number. Another drop-in that
+   sets it only warns.
+2. Checks that `/boot` has room for `update-grub` (`server_laptop_preflight_min_boot_mib`).
+3. **Dry-runs the GRUB change.** It renders the role's own drop-in, asks
+   `grub-mkconfig` what it would generate with and without it, and requires that
+   the only difference is one added `consoleblank=<n>` on each normal-boot `linux`
+   line and that `grub-script-check` accepts the result. It prints a warning when
+   today's `grub.cfg` is out of date (a hand edit, a new kernel): `update-grub`
+   would apply that too.
+4. Saves a recovery baseline on the controller in
+   `logs/preflight-<host>-<timestamp>/`: `grub-dry-run.txt` (the diffs) and
+   `files/` with `/etc/default/grub`, its drop-ins and `grub.cfg` as they are now.
+
+Nothing on the host is changed. The dry run happens in a private mount namespace
+(`unshare -m`) with a temporary copy of `/etc/default/grub.d`, `grub-mkconfig`
+prints to stdout, and `os-prober` is switched off inside it so no other disk is
+probed. Only temporary files (in `/tmp` and `~/.ansible/tmp`) are written, and the
+GRUB files are left byte-identical. To see what the rest of the role would change,
+run the push with `--check --diff` as usual.
+
+What it cannot check: the BIOS power-on option, airflow, the physical lid, and the
+panel going dark. Those are the hand tests below.
+
 ## Assumptions
 
 - Debian-family with systemd (asserted). Tested on Ubuntu 26.04.

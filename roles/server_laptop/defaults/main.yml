@@ -29,3 +29,6 @@ server_laptop_grub_config: /boot/grub/grub.cfg
 server_laptop_grub_config_pattern: "^[[:space:]]*linux[[:space:]].*[[:space:]]consoleblank={{ server_laptop_consoleblank }}([[:space:]]|$)"
 # What the running kernel is using.
 server_laptop_consoleblank_running: /sys/module/kernel/parameters/consoleblank
+
+# Preflight (tasks/preflight.yml): free space /boot needs for update-grub.
+server_laptop_preflight_min_boot_mib: 100

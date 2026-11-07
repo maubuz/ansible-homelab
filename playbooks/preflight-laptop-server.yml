@@ -1,0 +1,18 @@
+---
+# Read-only check of a laptop server before the first apply. Run from the
+# controller, after the server roles have given the host its ansiblebot account
+# (root, passwordless). See docs/laptop-server.md ("Before the first apply").
+#
+#   scripts/run-playbook.sh --unattended preflight-laptop-server -- --limit <host>
+#
+# Push only. The only things written are temporary files, on the host and in
+# logs/ on the controller.
+- name: Preflight laptop servers
+  hosts: laptop_servers
+  become: false
+  gather_facts: false
+  tasks:
+    - name: Run the server_laptop preflight
+      ansible.builtin.import_role:
+        name: server_laptop
+        tasks_from: preflight.yml

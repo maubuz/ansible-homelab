@@ -45,3 +45,7 @@ _Avoid_: Screen off, screensaver, DPMS
 **Pending reboot**:
 A change that is written to disk but not yet in effect, because the running system started before it was made.
 _Avoid_: Needs restart
+
+**Preflight**:
+A read-only check of a laptop server, run from the controller after the server roles and before the laptop role first changes it. It dry-runs the GRUB change and saves a recovery baseline.
+_Avoid_: Smoke test, health check

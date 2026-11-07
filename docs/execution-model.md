@@ -57,6 +57,10 @@ workstations follows the LTS by itself.
 `local-server.yml` does not apply it, so laptop servers are push only. See
 [laptop-server.md](laptop-server.md).
 
+`playbooks/preflight-laptop-server.yml` is a read-only entry point for the same
+group (it runs `tasks/preflight.yml` of `server_laptop`). Run it after the `server`
+role, so it connects as `ansiblebot` with passwordless root.
+
 ## The `ansiblebot` account
 
 The `ansiblebot` role creates it: a system account with no password, authorized

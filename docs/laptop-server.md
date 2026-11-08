@@ -43,7 +43,8 @@ It does four things, and stops with a message at the first problem:
    sets it only warns.
 2. Checks that `/boot` has room for `update-grub` (`server_laptop_preflight_min_boot_mib`).
 3. **Dry-runs the GRUB change.** It renders the role's own drop-in, asks
-   `grub-mkconfig` what it would generate with and without it, and requires that
+   `grub-mkconfig` what it would generate without it (an already installed copy, with
+   any value, is left out) and with it, and requires that
    the only difference is one added `consoleblank=<n>` on each normal-boot `linux`
    line and that `grub-script-check` accepts the result. It prints a warning when
    today's `grub.cfg` is out of date (a hand edit, a new kernel): `update-grub`
@@ -96,7 +97,8 @@ In `group_vars/laptop_servers.yml` (defaults in `roles/server_laptop/defaults/ma
 | `server_laptop_grub_defaults`, `_grub_dropin_dir`, `_grub_config`, `_consoleblank_running` | `/etc/default/grub`, `/etc/default/grub.d`, `/boot/grub/grub.cfg`, the sysfs `consoleblank` file | Paths the role reads; there is no reason to change them |
 
 Changing the lid action and rerunning changes only the drop-in and restarts
-`systemd-logind`. Changing `server_laptop_consoleblank` changes only the GRUB
+`systemd-logind`. The restart also happens when logind does not use the configured
+action, so a run that failed after writing the drop-in heals on the next run. Changing `server_laptop_consoleblank` changes only the GRUB
 drop-in, runs `update-grub` and reports a pending reboot.
 
 ## Pending reboot

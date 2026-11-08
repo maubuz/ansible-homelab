@@ -23,7 +23,15 @@
 
 # Asked of the generated file, not remembered from the drop-in: a run that
 # failed after writing the drop-in left grub.cfg stale, and the template is
-# unchanged on the next run. A missing file counts as stale too.
+# unchanged on the next run. A missing file counts as stale too. grep exits 1
+# for "value absent" and 2 for an error (unreadable file, bad pattern); only the
+# first means regenerate.
+- name: Look for the generated GRUB config
+  become: true
+  ansible.builtin.stat:
+    path: "{{ server_laptop_grub_config }}"
+  register: server_laptop_grub_config_stat
+
 - name: Check the generated GRUB config for the wanted value
   become: true
   ansible.builtin.command:
@@ -34,13 +42,17 @@
       - "{{ server_laptop_grub_config }}"
   register: server_laptop_grub_config_check
   changed_when: false
-  failed_when: false
+  failed_when: server_laptop_grub_config_check.rc > 1
   check_mode: false
+  when: server_laptop_grub_config_stat.stat.exists
 
 - name: Regenerate the GRUB config
   become: true
   ansible.builtin.command: update-grub
-  when: server_laptop_grub_dropin_result is changed or server_laptop_grub_config_check.rc != 0
+  when: >-
+    server_laptop_grub_dropin_result is changed or
+    not server_laptop_grub_config_stat.stat.exists or
+    server_laptop_grub_config_check.rc == 1
   changed_when: true
 
 - name: Read the consoleblank the running kernel uses

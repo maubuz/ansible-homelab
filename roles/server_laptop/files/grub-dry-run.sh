@@ -8,7 +8,8 @@
 # plus the rendered drop-in, and grub-mkconfig prints to stdout. /boot and the
 # real /etc are never written.
 #
-# In:  PREFLIGHT_DROPIN (the rendered drop-in), PREFLIGHT_N (consoleblank seconds)
+# In:  PREFLIGHT_DROPIN (the rendered drop-in), PREFLIGHT_DROPIN_NAME (its file name),
+#      PREFLIGHT_N (consoleblank seconds)
 # Out: "RESULT key=value" lines, then the diffs.
 main() {
 result() { printf 'RESULT %s=%s\n' "$1" "$2"; }
@@ -20,9 +21,18 @@ cp -a /etc/default/grub.d/. "$work/grub.d/"
 printf 'GRUB_DISABLE_OS_PROBER=true\n' > "$work/grub.d/zz-preflight-no-os-prober.cfg"
 mount --bind "$work/grub.d" /etc/default/grub.d || { result bind_failed 1; exit 0; }
 
+# What update-grub would generate today. With the role's drop-in already installed
+# (possibly with another value) that render includes it, so drift below is only
+# what the role did not cause: a hand edit, a new kernel.
+if [ -e "$work/grub.d/$PREFLIGHT_DROPIN_NAME" ]; then
+  grub-mkconfig > "$work/current" 2> "$work/current.err" < /dev/null
+  result current_rc $?
+  # "Before" is GRUB without the drop-in, so the only difference is the one we add.
+  rm -f "$work/grub.d/$PREFLIGHT_DROPIN_NAME"
+fi
 grub-mkconfig > "$work/before" 2> "$work/before.err" < /dev/null
 result before_rc $?
-printf '%s\n' "$PREFLIGHT_DROPIN" > "$work/grub.d/90-server-laptop.cfg"
+printf '%s\n' "$PREFLIGHT_DROPIN" > "$work/grub.d/$PREFLIGHT_DROPIN_NAME"
 grub-mkconfig > "$work/after" 2> "$work/after.err" < /dev/null
 result after_rc $?
 grub-script-check "$work/after" > "$work/check.err" 2>&1
@@ -48,7 +58,8 @@ awk -v n="$PREFLIGHT_N" '
   }' "$work/before" "$work/after"
 
 # What update-grub would change besides our line (a hand edit, a new kernel).
-diff /boot/grub/grub.cfg "$work/before" > "$work/drift" 2>&1
+[ -e "$work/current" ] || cp "$work/before" "$work/current"
+diff /boot/grub/grub.cfg "$work/current" > "$work/drift" 2>&1
 result drift_lines "$(wc -l < "$work/drift")"
 
 printf '===DRIFT===\n'; cat "$work/drift"

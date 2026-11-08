@@ -64,7 +64,7 @@ $t run --unattended preflight-laptop-server -- -i inventory.ini -i logs/vm-inven
 | # | Scenario | Green when |
 | --- | --- | --- |
 | LP1 | Fresh GRUB (remove `90-server-laptop.cfg`, then `update-grub`) | Passes, "changes 3 linux line(s)"; a second run is `changed=0 failed=0` |
-| LP2 | Role already applied (run `server_laptop` first) | Passes, "already applied" |
+| LP2 | Role already applied (run `server_laptop` first) | Passes, "the drop-in is already installed; it adds consoleblank=60 to 3 linux line(s)" |
 | LP3 | `consoleblank` appended to `/etc/default/grub` | Fails at "already sets consoleblank" |
 | LP4 | `update-grub` moved away | Fails at "update-grub is missing" |
 | LP5 | `-e server_laptop_consoleblank=abc` | Fails at "must be a whole number" |
@@ -72,6 +72,8 @@ $t run --unattended preflight-laptop-server -- -i inventory.ini -i logs/vm-inven
 | LP7 | `grub.cfg` hand-edited | Passes with the drift warning |
 | LP8 | A drop-in with an unterminated quote | Fails at "does not match the intended change" (`before_rc` 2) |
 | LP9 | Checksums of `grub.cfg`, `/etc/default/grub`, the drop-ins and the directory mtimes before and after a run | Identical |
+| LP10 | Role applied with `-e server_laptop_consoleblank=30`, preflight with the default 60 | Passes (the installed drop-in is left out of the "before" run) |
+| LP11 | `--check` added to the preflight | Passes with the same report; nothing is skipped |
 
 ## C: machine check
 

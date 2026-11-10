@@ -3,15 +3,14 @@
 # playbooks/servers.yml (controller) and local-server.yml (ansible-pull) apply
 # the same set and cannot drift apart.
 #
-# server_syncthing comes straight after ansiblebot so a missing
-# server_admin_user fails before the long installs, not after them.
+# server_syncthing is deliberately not here: which hosts get Syncthing is not
+# decided yet, and no playbook applies the role (docs/syncthing-server.md).
 # wezterm and tailscale are plain system-wide apt installs, shared with
 # workstations; the other roles have separate server versions because the
 # workstation ones install into the connecting user's home.
 dependencies:
   - role: bootstrap
   - role: ansiblebot
-  - role: server_syncthing
   - role: server_packages
   - role: server_python
   - role: server_node

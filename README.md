@@ -83,10 +83,7 @@ admin user with sudo, and SSH reachable from the controller.
 
 4. Bootstrap it once as the admin user. This creates the `ansiblebot` account,
    installs the keys from `ansiblebot_keys`, grants passwordless sudo, upgrades
-   packages, then installs everything in the `server` role. `server_admin_user`,
-   who administers Syncthing, must already exist on the host, and so must every
-   user in `server_syncthing_users` (see
-   [docs/syncthing-server.md](docs/syncthing-server.md)).
+   packages, then installs everything in the `server` role.
    `group_vars/servers.yml` sets `ansible_user: ansiblebot`, which does not exist yet on a fresh host, so
    override it for this run:
 
@@ -105,14 +102,11 @@ admin user with sudo, and SSH reachable from the controller.
 
 Every host type gets the `baseline_*` packages and snaps in `group_vars/all.yml`.
 A server gets them from the `server` role, which applies, in order: `bootstrap`,
-`ansiblebot`, `server_syncthing`, `server_packages`, `server_python`,
-`server_node`, `wezterm` and `tailscale`. These install system-wide, so every user
-on the host has `node`, `uv` and the rest. Set `server_admin_user` in
-`group_vars/all.yml` to the existing user who administers Syncthing, and list in
-`server_syncthing_users` the users who each get their own Syncthing instance; the
-run fails until the admin is set. Syncthing runs as a dedicated `syncthing`
-account, with a GUI on a Unix socket per instance: see
-[docs/syncthing-server.md](docs/syncthing-server.md). After the first run,
+`ansiblebot`, `server_packages`, `server_python`, `server_node`, `wezterm` and
+`tailscale`. These install system-wide, so every user on the host has `node`, `uv`
+and the rest. `server_syncthing` is not part of it: no playbook applies that role
+yet, and which hosts get it will be decided later (see
+[docs/syncthing-server.md](docs/syncthing-server.md)). After the first run,
 `sudo tailscale up` is still a manual step. See
 [docs/execution-model.md](docs/execution-model.md).
 

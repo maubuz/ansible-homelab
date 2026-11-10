@@ -7,6 +7,10 @@ user**, **consuming user**, **synced folder**) are defined in
 `roles/server_syncthing`; the workstation `syncthing` role (a systemd *user*
 service) is separate and unchanged.
 
+**Status:** the `server` role does not include `server_syncthing`, and no playbook
+applies it yet. Which hosts get Syncthing will be decided later; until then this
+describes what the role does when it is applied.
+
 The role manages only the operating-system side: accounts, directories, systemd
 units and three network settings. **Devices and folders are never configured by
 Ansible.** You set them up by hand in each instance's GUI.

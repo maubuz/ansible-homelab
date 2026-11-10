@@ -37,15 +37,14 @@ common, and each side composes its own list from it.
 `roles/server/meta/main.yml` lists everything a server gets, in order, and has no
 tasks of its own. `playbooks/servers.yml` and `local-server.yml` both apply just
 this role, so a pulling server and a controller-managed one cannot drift apart.
-`server_syncthing` runs right after `ansiblebot` so a missing `server_admin_user`
-(the person who administers Syncthing; a member of the `syncthing` group, not the
-user it runs as) fails before the long installs. The model is in
-[syncthing-server.md](syncthing-server.md). The wrapper follows these dependencies when it
+`server_syncthing` is not in the list: which hosts get Syncthing is not decided yet,
+so no playbook applies it. The model is in [syncthing-server.md](syncthing-server.md).
+The wrapper follows these dependencies when it
 decides whether a run escalates.
 
 `ansible-pull` generates an inventory with no groups, so it never loads
-`group_vars/servers.yml`. Values a server role needs on a pull (`baseline_*`,
-`server_admin_user`, `server_syncthing_users`) live in `group_vars/all.yml` or the role's defaults.
+`group_vars/servers.yml`. Values a server role needs on a pull (`baseline_*`;
+`server_admin_user` and `server_syncthing_users` for `server_syncthing`, once a playbook applies it) live in `group_vars/all.yml` or the role's defaults.
 Moving Node to a newer LTS line is a manual edit of `server_node_major`; nvm on
 workstations follows the LTS by itself.
 

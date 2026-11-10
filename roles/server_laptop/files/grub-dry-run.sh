@@ -4,22 +4,23 @@
 # and would rewrite every $VAR in this text). The body is a function run with
 # stdin closed, so nothing it starts can swallow the rest of the script.
 #
-# In its own mount namespace /etc/default/grub.d is replaced by a temporary copy
-# plus the rendered drop-in, and grub-mkconfig prints to stdout. /boot and the
+# In its own mount namespace the GRUB drop-in directory is replaced by a temporary
+# copy plus the rendered drop-in, and grub-mkconfig prints to stdout. /boot and the
 # real /etc are never written.
 #
 # In:  PREFLIGHT_DROPIN (the rendered drop-in), PREFLIGHT_DROPIN_NAME (its file name),
-#      PREFLIGHT_N (consoleblank seconds)
+#      PREFLIGHT_N (consoleblank seconds), PREFLIGHT_GRUB_DROPIN_DIR (the drop-in
+#      directory), PREFLIGHT_GRUB_CONFIG (the generated config, for the drift diff)
 # Out: "RESULT key=value" lines, then the diffs.
 main() {
 result() { printf 'RESULT %s=%s\n' "$1" "$2"; }
 work=$(mktemp -d) || exit 1
 trap 'rm -rf "$work"' EXIT
 mkdir "$work/grub.d"
-cp -a /etc/default/grub.d/. "$work/grub.d/"
+cp -a "$PREFLIGHT_GRUB_DROPIN_DIR/." "$work/grub.d/"
 # os-prober would probe other disks; keep it off in both runs.
 printf 'GRUB_DISABLE_OS_PROBER=true\n' > "$work/grub.d/zz-preflight-no-os-prober.cfg"
-mount --bind "$work/grub.d" /etc/default/grub.d || { result bind_failed 1; exit 0; }
+mount --bind "$work/grub.d" "$PREFLIGHT_GRUB_DROPIN_DIR" || { result bind_failed 1; exit 0; }
 
 # What update-grub would generate today. With the role's drop-in already installed
 # (possibly with another value) that render includes it, so drift below is only
@@ -59,7 +60,7 @@ awk -v n="$PREFLIGHT_N" '
 
 # What update-grub would change besides our line (a hand edit, a new kernel).
 [ -e "$work/current" ] || cp "$work/before" "$work/current"
-diff /boot/grub/grub.cfg "$work/current" > "$work/drift" 2>&1
+diff "$PREFLIGHT_GRUB_CONFIG" "$work/current" > "$work/drift" 2>&1
 result drift_lines "$(wc -l < "$work/drift")"
 
 printf '===DRIFT===\n'; cat "$work/drift"

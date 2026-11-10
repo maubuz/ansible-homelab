@@ -36,17 +36,7 @@
 # writing the drop-in never restarted logind, and the template is unchanged on
 # the next run. So the restart follows what logind uses, not only the template.
 - name: Read the effective logind lid settings
-  ansible.builtin.command:
-    cmd: >-
-      busctl get-property org.freedesktop.login1 /org/freedesktop/login1
-      org.freedesktop.login1.Manager {{ item }}
-  loop:
-    - HandleLidSwitch
-    - HandleLidSwitchExternalPower
-    - HandleLidSwitchDocked
-  register: server_laptop_logind_effective
-  changed_when: false
-  check_mode: false
+  ansible.builtin.import_tasks: lid_read.yml
 
 - name: Restart systemd-logind when it does not use the configured lid action
   become: true
@@ -68,6 +58,8 @@
 - name: Blank the console when idle
   ansible.builtin.import_tasks: console_blank.yml
 
+# Skipped under --check: nothing was applied, so on a host that has not been
+# applied yet these assertions would fail on the state it was already in.
 - name: Verify the configuration
   ansible.builtin.import_tasks: verify.yml
   when: not ansible_check_mode

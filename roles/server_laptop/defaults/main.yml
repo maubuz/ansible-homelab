@@ -30,5 +30,9 @@ server_laptop_grub_config_pattern: "^[[:space:]]*linux[[:space:]].*[[:space:]]co
 # What the running kernel is using.
 server_laptop_consoleblank_running: /sys/module/kernel/parameters/consoleblank
 
-# Preflight (tasks/preflight.yml): free space /boot needs for update-grub.
-server_laptop_preflight_min_boot_mib: 100
+# Preflight (tasks/preflight.yml): free MiB /boot must have for update-grub.
+# grub-mkconfig writes the whole new config to grub.cfg.new next to grub.cfg and
+# then copies it over, so the peak extra use is one grub.cfg (about 10 KiB on a
+# stock install, well under 1 MiB even with many kernels). 1 MiB is the smallest
+# value `df -m` can express, so this only catches a /boot that is full.
+server_laptop_preflight_min_boot_mib: 1

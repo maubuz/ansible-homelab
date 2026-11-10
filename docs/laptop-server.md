@@ -19,7 +19,7 @@ membership is the only switch: there is no chassis check, so a VM can be a lapto
 server for testing.
 
 ```sh
-scripts/run-playbook.sh --unattended servers -- --limit x230.lan
+scripts/run-playbook.sh --unattended servers -- --limit x230server.local
 ```
 
 Laptop servers are managed by push only. `local-server.yml` (the pull entry
@@ -95,6 +95,8 @@ In `group_vars/laptop_servers.yml` (defaults in `roles/server_laptop/defaults/ma
 | `server_laptop_consoleblank` | `60` | Seconds without input before the console blanks (whole number; `0` turns blanking off) |
 | `server_laptop_grub_dropin` | `/etc/default/grub.d/90-server-laptop.cfg` | The GRUB drop-in the role owns |
 | `server_laptop_grub_defaults`, `_grub_dropin_dir`, `_grub_config`, `_consoleblank_running` | `/etc/default/grub`, `/etc/default/grub.d`, `/boot/grub/grub.cfg`, the sysfs `consoleblank` file | Paths the role reads; there is no reason to change them |
+| `server_laptop_grub_config_pattern` | a `linux` line with `consoleblank=<n>` as a whole word | The regex that tells whether the generated GRUB config has the wanted value, so `6` does not satisfy `60`. Derived from `server_laptop_consoleblank`; there is no reason to change it |
+| `server_laptop_preflight_min_boot_mib` | `1` | Free MiB the preflight requires on `/boot`. `grub-mkconfig` writes the new config next to `grub.cfg` before copying it over, so the peak extra use is one `grub.cfg` (about 10 KiB); `df -m` cannot express less than 1 |
 
 Changing the lid action and rerunning changes only the drop-in and restarts
 `systemd-logind`. The restart also happens when logind does not use the configured
@@ -122,6 +124,7 @@ then failed heals itself on the next run, with no template change needed.
 
 ## Verification
 
+The paths in the commands below, and in Rollback, are the defaults of the variables above.
 The role checks itself at the end of a run (tag `server_laptop_verify`). By hand:
 
 ```sh

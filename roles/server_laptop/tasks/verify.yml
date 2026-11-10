@@ -2,16 +2,7 @@
 # Read-only checks of what is in effect, not of what was written. The GRUB config
 # is the exception that proves it: it is what the bootloader will read.
 - name: Read the effective logind lid settings
-  ansible.builtin.command:
-    cmd: >-
-      busctl get-property org.freedesktop.login1 /org/freedesktop/login1
-      org.freedesktop.login1.Manager {{ item }}
-  loop:
-    - HandleLidSwitch
-    - HandleLidSwitchExternalPower
-    - HandleLidSwitchDocked
-  register: server_laptop_logind_props
-  changed_when: false
+  ansible.builtin.import_tasks: lid_read.yml
 
 - name: Assert logind uses the configured lid action
   ansible.builtin.assert:
@@ -19,7 +10,7 @@
       - item.stdout | trim == 's "' ~ server_laptop_lid_action ~ '"'
     fail_msg: "{{ item.item }} is {{ item.stdout | trim }}, expected {{ server_laptop_lid_action }}"
     quiet: true
-  loop: "{{ server_laptop_logind_props.results }}"
+  loop: "{{ server_laptop_logind_effective.results }}"
   loop_control:
     label: "{{ item.item }}"
 
@@ -40,13 +31,13 @@
     label: "{{ item.item }}"
 
 - name: Check the generated GRUB config has the wanted consoleblank
-  become: true
-  ansible.builtin.command:
-    argv:
-      - grep
-      - -Eq
-      - "{{ server_laptop_grub_config_pattern }}"
-      - "{{ server_laptop_grub_config }}"
-  register: server_laptop_grub_config_verify
-  changed_when: false
-  failed_when: server_laptop_grub_config_verify.rc != 0
+  ansible.builtin.import_tasks: grub_config_check.yml
+
+- name: Assert the generated GRUB config has the wanted consoleblank
+  ansible.builtin.assert:
+    that:
+      - server_laptop_grub_config_stat.stat.exists and server_laptop_grub_config_check.rc == 0
+    fail_msg: >-
+      {{ server_laptop_grub_config }} does not set
+      consoleblank={{ server_laptop_consoleblank }}.
+    quiet: true

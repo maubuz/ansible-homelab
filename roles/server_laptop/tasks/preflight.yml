@@ -35,6 +35,8 @@
   environment:
     PREFLIGHT_DROPIN_NAME: "{{ server_laptop_grub_dropin | basename }}"
     PREFLIGHT_N: "{{ server_laptop_consoleblank }}"
+    PREFLIGHT_GRUB_DROPIN_DIR: "{{ server_laptop_grub_dropin_dir }}"
+    PREFLIGHT_GRUB_CONFIG: "{{ server_laptop_grub_config }}"
     PREFLIGHT_DROPIN: "{{ lookup('ansible.builtin.template', 'grub-consoleblank.cfg.j2') | trim }}"
   register: server_laptop_preflight_dryrun
   changed_when: false

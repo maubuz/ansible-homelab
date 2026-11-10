@@ -29,7 +29,7 @@ so the server scenarios do not need them; the `-e @logs/vm-admin-user.yml` in th
 commands is harmless. Between scenarios, reset the account:
 
 ```sh
-$t exec --root userdel -r ansiblebot; $t exec --root groupdel ansiblebot
+$t exec --root pkill -u ansiblebot; $t exec --root userdel -r ansiblebot; $t exec --root groupdel ansiblebot
 $t exec --root rm -f /etc/sudoers.d/ansiblebot
 ```
 
@@ -65,7 +65,7 @@ $t run --unattended preflight-laptop-server -- -i inventory.ini -i logs/vm-inven
 
 | # | Scenario | Green when |
 | --- | --- | --- |
-| LP1 | Fresh GRUB (remove `90-server-laptop.cfg`, then `update-grub`) | Passes, "changes 3 linux line(s)"; a second run is `changed=0 failed=0` |
+| LP1 | Fresh GRUB (remove `90-server-laptop.cfg`, then `update-grub`) | Passes, "adds consoleblank=60 to 3 linux line(s)"; a second run is `changed=0 failed=0` |
 | LP2 | Role already applied (run `server_laptop` first) | Passes, "the drop-in is already installed; it adds consoleblank=60 to 3 linux line(s)" |
 | LP3 | `consoleblank` appended to `/etc/default/grub` | Fails at "already sets consoleblank" |
 | LP4 | `update-grub` moved away | Fails at "update-grub is missing" |

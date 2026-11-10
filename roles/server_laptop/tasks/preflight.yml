@@ -14,7 +14,7 @@
 - name: Assert /boot has room for update-grub
   ansible.builtin.assert:
     that:
-      - server_laptop_preflight_df.stdout_lines[-1] | trim | int >= server_laptop_preflight_min_boot_mib
+      - server_laptop_preflight_df.stdout_lines[-1] | trim | int >= server_laptop_preflight_min_boot_mib | int
     fail_msg: >-
       /boot has {{ server_laptop_preflight_df.stdout_lines[-1] | trim }} MiB free,
       less than {{ server_laptop_preflight_min_boot_mib }}.

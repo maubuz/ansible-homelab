@@ -69,7 +69,12 @@ panel going dark. Those are the hand tests below.
   and `update-grub` must exist). `/etc/default/grub` itself must not set
   `consoleblank`, or the run stops; another file in `/etc/default/grub.d/` that
   sets it only draws a warning, because the winner then depends on file order.
-- Running on mains power. Battery health, heat and Wi-Fi are out of scope.
+- Running on mains power, on Wi-Fi or wired. Battery health and heat are out of scope.
+- The `server` role has run first, so the host has the `ansiblebot` account (root,
+  passwordless). Everything that needs root, the preflight included, relies on it.
+- Read-only means no change to configuration or state. Temporary files in `/tmp`
+  and `~/.ansible/tmp` do not count, which is what lets a dry run write its work
+  files.
 
 ## Manual prerequisites
 

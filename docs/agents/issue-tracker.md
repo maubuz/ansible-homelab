@@ -26,6 +26,10 @@ When set to `yes`, PRs run through the same labels and states as issues, using t
 
 GitHub shares one number space across issues and PRs, so a bare `#42` may be either: resolve with `gh pr view 42` and fall back to `gh issue view 42`.
 
+## Writing a ticket
+
+Keep a ticket to the **essential**: each check, step or option names the failure it prevents or the outcome it delivers, and anything that names neither is cut. Settle unconfirmed assumptions (who runs it, with what access, what counts as a side effect) with the user before publishing; unstated ones are filled with guesses that cost a rebuild. The repo's standing assumptions are in the "Assumptions" section of the relevant doc (for laptop servers, `docs/laptop-server.md`).
+
 ## When a skill says "publish to the issue tracker"
 
 Create a GitHub issue.

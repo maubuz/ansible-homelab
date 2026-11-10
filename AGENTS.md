@@ -23,8 +23,8 @@ Ansible for a personal homelab. Targets Ubuntu 24.04+ only (26.04 preferred), ac
 → Failed run, tags, credentials: `docs/running.md`.
 
 ## Done means
-1. `ansible-lint playbooks/ roles/ local.yml local-server.yml site.yml` is clean (from the repo root).
-2. `--syntax-check` passes and `--check` is clean for module tasks.
+1. `scripts/check.sh` passes (lint, syntax, the `become` rules); the pre-commit hook runs it (`git config core.hooksPath .githooks`, once per clone).
+2. `--check` is clean for module tasks.
 3. A changed first-install path (a `creates:` guard, keyring, new role): `scripts/test-vm.sh run <playbook>` twice, and the second run converges (`changed=0`); verify with `scripts/test-vm.sh exec`. Use only the script. → `docs/testing.md`; touching `ansiblebot`, `servers.yml` or `local*.yml` → `docs/testing-unattended.md`.
 4. Verify on the machine (`dpkg -S`, `apt-cache policy`, `systemctl status`); `ok` only means the module was satisfied.
 5. `git status` shows only intended changes (the VM share is read-write).

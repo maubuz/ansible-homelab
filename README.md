@@ -137,7 +137,7 @@ docs/               rationale and procedures, linked below
 ```sh
 scripts/run-playbook.sh <name>            # run one playbook; name is any unique substring
 scripts/run-playbook.sh --check <name>    # dry run
-ansible-lint playbooks/ roles/ local.yml local-server.yml site.yml
+scripts/check.sh                          # lint, syntax and become rules; the pre-commit hook runs it
 scripts/test-vm.sh run <name>             # first-install path on a clean Ubuntu 26.04 VM
 ```
 

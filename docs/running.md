@@ -71,8 +71,10 @@ module was satisfied.
 
 ```sh
 scripts/run-playbook.sh ansible-tools   # installs ansible-lint; needs pipx from the python role
-ansible-lint playbooks/ roles/ local.yml local-server.yml site.yml
+scripts/check.sh                        # lint, syntax and become rules
 ```
 
-Run it from the repository root, where `ansible.cfg` supplies the collections
-path that `ansible-lint`'s own virtualenv lacks.
+Enable the pre-commit hook once per clone: `git config core.hooksPath .githooks`.
+
+The script runs from the repository root, where `ansible.cfg` supplies the
+collections path that `ansible-lint`'s own virtualenv lacks.

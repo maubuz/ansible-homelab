@@ -13,12 +13,9 @@ Throwaway keys are made inside the VM, and only their public halves reach `logs/
 
 ```sh
 t=scripts/test-vm.sh
-$t exec ssh-keygen -q -t ed25519 -N '' -f /home/ubuntu/test_a -C test-a
-$t exec ssh-keygen -q -t ed25519 -N '' -f /home/ubuntu/test_b -C test-b
-printf 'ansiblebot_keys:\n  - "%s"\n' "$($t exec cat /home/ubuntu/test_a.pub)" > logs/vm-keys-a.yml
+$t controller    # keys A and B, vm-inventory.ini, vm-keys-a.yml, vm-admin-user.yml, vm-admin.yml, vm-bot.yml
 printf 'ansiblebot_keys:\n  - "%s"\n  - "%s"\n' "$($t exec cat /home/ubuntu/test_a.pub)" \
   "$($t exec cat /home/ubuntu/test_b.pub)" > logs/vm-keys-ab.yml
-printf 'server_admin_user: ubuntu\n' > logs/vm-admin-user.yml
 printf 'server_syncthing_users:\n  - alice\n  - bob\n' > logs/vm-syncthing.yml
 for u in alice bob carol; do $t exec --root useradd -m $u; done
 ```
@@ -55,8 +52,9 @@ Run `$t run <playbook> -- <args>`; check with `$t exec`.
 ## LP: laptop preflight
 
 `playbooks/preflight-laptop-server.yml` is read-only and push only; the VM is its own
-controller, as in F. Put the VM in `[laptop_servers]` in `logs/vm-inventory.ini` and
-connect as `ansiblebot` (key A):
+controller, as in F. `$t controller laptop_servers` puts the VM in `[laptop_servers]` in
+`logs/vm-inventory.ini`; connect as `ansiblebot` (key A, which exists once the `server`
+role has run, as in F):
 
 ```sh
 $t run --unattended preflight-laptop-server -- -i inventory.ini -i logs/vm-inventory.ini \
@@ -117,11 +115,7 @@ The VM is both controller and target, over SSH to `127.0.0.1`. Key B plays the
 admin's key, key A the `ansiblebot` key.
 
 ```sh
-$t exec bash -c 'mkdir -p ~/.ssh && chmod 700 ~/.ssh && cat ~/test_b.pub >> ~/.ssh/authorized_keys \
-  && ssh -i ~/test_b -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new ubuntu@127.0.0.1 true'
-printf '[servers]\n127.0.0.1\n' > logs/vm-inventory.ini
-printf 'ansible_ssh_private_key_file: /home/ubuntu/test_b\n' > logs/vm-admin.yml
-printf 'ansible_ssh_private_key_file: /home/ubuntu/test_a\n' > logs/vm-bot.yml
+$t controller    # already done for the fixtures above; writes logs/vm-inventory.ini with [servers]
 inv="-i inventory.ini -i logs/vm-inventory.ini -e @logs/vm-keys-a.yml -e @logs/vm-admin-user.yml"
 
 # 1. First bootstrap as the admin (README step 4)

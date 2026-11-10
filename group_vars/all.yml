@@ -34,7 +34,7 @@ baseline_snaps:
 baseline_snaps_classic:
     - nvim
 # The admin user on servers: the person who administers Syncthing (the
-# server_syncthing role) and so belongs to its service account's group. Set here
+# server_syncthing role, which no playbook applies yet) and so belongs to its service account's group. Set here
 # rather than in group_vars/servers.yml because ansible-pull ignores that file.
 # The role fails until it is set, and the user must already exist.
 server_admin_user: 'mau'

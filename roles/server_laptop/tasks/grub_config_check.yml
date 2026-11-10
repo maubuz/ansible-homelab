@@ -1,0 +1,29 @@
+---
+# Does the generated GRUB config, which the bootloader reads, carry the wanted
+# consoleblank? console_blank.yml reads the result to decide on update-grub,
+# verify.yml to assert, so the pattern is applied only here.
+#
+# grep exits 1 for "value absent" and 2 for an error (unreadable file, bad
+# pattern); only the first is an answer. A missing file is not asked: the caller
+# reads server_laptop_grub_config_stat and treats it as stale.
+- name: Look for the generated GRUB config
+  become: true
+  ansible.builtin.stat:
+    path: "{{ server_laptop_grub_config }}"
+  register: server_laptop_grub_config_stat
+
+# check_mode: false because a command task is skipped under --check, and the
+# tasks that read this register would then have no rc to read.
+- name: Check the generated GRUB config for the wanted value
+  become: true
+  ansible.builtin.command:
+    argv:
+      - grep
+      - -Eq
+      - "{{ server_laptop_grub_config_pattern }}"
+      - "{{ server_laptop_grub_config }}"
+  register: server_laptop_grub_config_check
+  changed_when: false
+  failed_when: server_laptop_grub_config_check.rc > 1
+  check_mode: false
+  when: server_laptop_grub_config_stat.stat.exists

@@ -9,7 +9,8 @@ servers, GPU workstations and Raspberry Pis.
 | Host type | Inventory group | Mode | Status |
 | --- | --- | --- | --- |
 | Laptop or workstation with a desktop | `workstations` | Interactive | Working |
-| Laptop server, Raspberry Pi | `servers` | Unattended (pull or controller) | Working: the `server` role (see below) |
+| Laptop server | `laptop_servers` (child of `servers`) | Unattended (controller only) | Working: `server` role plus `server_laptop` ([docs/laptop-server.md](docs/laptop-server.md)) |
+| Raspberry Pi | `servers` | Unattended (pull or controller) | Working: the `server` role (see below) |
 | GPU workstation, Raspberry Pi as its own type | own group + `group_vars` file | | Planned |
 
 Interactive means a person at the machine types their sudo password. Unattended
@@ -82,10 +83,7 @@ admin user with sudo, and SSH reachable from the controller.
 
 4. Bootstrap it once as the admin user. This creates the `ansiblebot` account,
    installs the keys from `ansiblebot_keys`, grants passwordless sudo, upgrades
-   packages, then installs everything in the `server` role. `server_admin_user`,
-   who administers Syncthing, must already exist on the host, and so must every
-   user in `server_syncthing_users` (see
-   [docs/syncthing-server.md](docs/syncthing-server.md)).
+   packages, then installs everything in the `server` role.
    `group_vars/servers.yml` sets `ansible_user: ansiblebot`, which does not exist yet on a fresh host, so
    override it for this run:
 
@@ -104,14 +102,11 @@ admin user with sudo, and SSH reachable from the controller.
 
 Every host type gets the `baseline_*` packages and snaps in `group_vars/all.yml`.
 A server gets them from the `server` role, which applies, in order: `bootstrap`,
-`ansiblebot`, `server_syncthing`, `server_packages`, `server_python`,
-`server_node`, `wezterm` and `tailscale`. These install system-wide, so every user
-on the host has `node`, `uv` and the rest. Set `server_admin_user` in
-`group_vars/all.yml` to the existing user who administers Syncthing, and list in
-`server_syncthing_users` the users who each get their own Syncthing instance; the
-run fails until the admin is set. Syncthing runs as a dedicated `syncthing`
-account, with a GUI on a Unix socket per instance: see
-[docs/syncthing-server.md](docs/syncthing-server.md). After the first run,
+`ansiblebot`, `server_packages`, `server_python`, `server_node`, `wezterm` and
+`tailscale`. These install system-wide, so every user on the host has `node`, `uv`
+and the rest. `server_syncthing` is not part of it: no playbook applies that role
+yet, and which hosts get it will be decided later (see
+[docs/syncthing-server.md](docs/syncthing-server.md)). After the first run,
 `sudo tailscale up` is still a manual step. See
 [docs/execution-model.md](docs/execution-model.md).
 
@@ -136,7 +131,7 @@ docs/               rationale and procedures, linked below
 ```sh
 scripts/run-playbook.sh <name>            # run one playbook; name is any unique substring
 scripts/run-playbook.sh --check <name>    # dry run
-ansible-lint playbooks/ roles/ local.yml local-server.yml site.yml
+scripts/check.sh                          # lint, syntax and become rules; the pre-commit hook runs it
 scripts/test-vm.sh run <name>             # first-install path on a clean Ubuntu 26.04 VM
 ```
 
@@ -149,6 +144,7 @@ to someone (or something) helping to debug a failure.
 - [docs/testing.md](docs/testing.md): the throwaway VM, how to test a change, and what it cannot cover
 - [docs/testing-unattended.md](docs/testing-unattended.md): VM scenarios for the `ansiblebot` account, keys, and the pull and controller paths
 - [docs/execution-model.md](docs/execution-model.md): interactive vs unattended, running from a controller, adding a host type
+- [docs/laptop-server.md](docs/laptop-server.md): laptop servers: lid action, sleep masking, console blanking, the read-only preflight, tunables, rollback, BIOS prerequisite
 - [docs/syncthing-server.md](docs/syncthing-server.md): Syncthing on servers: system and personal instances, reaching a GUI, pairing, admin access
 - [docs/adr/](docs/adr/): recorded design decisions
 

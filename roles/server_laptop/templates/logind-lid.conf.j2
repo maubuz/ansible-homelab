@@ -1,0 +1,6 @@
+# Managed by Ansible (role: server_laptop). Local edits will be overwritten.
+# Keep the system running when the lid closes, on battery, on AC, or docked.
+[Login]
+HandleLidSwitch={{ server_laptop_lid_action }}
+HandleLidSwitchExternalPower={{ server_laptop_lid_action }}
+HandleLidSwitchDocked={{ server_laptop_lid_action }}

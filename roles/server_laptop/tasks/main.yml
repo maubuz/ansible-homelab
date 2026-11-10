@@ -1,0 +1,67 @@
+---
+# A laptop server: lid closed, no suspend. Applied by the second play in
+# playbooks/servers.yml to hosts in the laptop_servers group; group membership
+# is the only switch, there is no chassis check.
+- name: Assert the host is Debian-family with systemd
+  ansible.builtin.assert:
+    that:
+      - ansible_facts['os_family'] == 'Debian'
+      - ansible_facts['service_mgr'] == 'systemd'
+    fail_msg: "server_laptop supports Debian/Ubuntu hosts running systemd only."
+    quiet: true
+
+- name: Check console blanking can be applied, before changing anything
+  ansible.builtin.import_tasks: console_blank_preflight.yml
+
+- name: Ensure the logind drop-in directory exists
+  become: true
+  ansible.builtin.file:
+    path: "{{ server_laptop_logind_dropin | dirname }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Configure logind to ignore the lid switch
+  become: true
+  ansible.builtin.template:
+    src: logind-lid.conf.j2
+    dest: "{{ server_laptop_logind_dropin }}"
+    owner: root
+    group: root
+    mode: "0644"
+  register: server_laptop_logind_dropin_result
+
+# Asked of logind, not remembered from the drop-in: a run that failed after
+# writing the drop-in never restarted logind, and the template is unchanged on
+# the next run. So the restart follows what logind uses, not only the template.
+- name: Read the effective logind lid settings
+  ansible.builtin.import_tasks: lid_read.yml
+
+- name: Restart systemd-logind when it does not use the configured lid action
+  become: true
+  ansible.builtin.systemd_service:
+    name: systemd-logind
+    state: restarted
+  when: >-
+    server_laptop_logind_dropin_result is changed or
+    (server_laptop_logind_effective.results | map(attribute='stdout') | map('trim')
+     | reject('equalto', 's "' ~ server_laptop_lid_action ~ '"') | list | length) > 0
+
+- name: Mask the sleep targets
+  become: true
+  ansible.builtin.systemd_service:
+    name: "{{ item }}"
+    masked: true
+  loop: "{{ server_laptop_sleep_targets }}"
+
+- name: Blank the console when idle
+  ansible.builtin.import_tasks: console_blank.yml
+
+# Skipped under --check: nothing was applied, so on a host that has not been
+# applied yet these assertions would fail on the state it was already in.
+- name: Verify the configuration
+  ansible.builtin.import_tasks: verify.yml
+  when: not ansible_check_mode
+  tags:
+    - server_laptop_verify

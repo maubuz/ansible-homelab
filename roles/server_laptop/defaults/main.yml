@@ -1,0 +1,38 @@
+---
+# What logind does when the lid closes, on battery, on AC and docked. "ignore"
+# keeps the server running.
+server_laptop_lid_action: ignore
+# A drop-in, so the packaged logind.conf stays untouched.
+server_laptop_logind_dropin: /etc/systemd/logind.conf.d/90-server-laptop.conf
+
+# Masked so nothing (logind, a user, a package) can suspend the machine, even
+# if something other than the lid asks for it.
+server_laptop_sleep_targets:
+  - sleep.target
+  - suspend.target
+  - hibernate.target
+  - hybrid-sleep.target
+
+# Console blanking: seconds without input before the text console blanks and the
+# panel goes dark (the X230's backlight does; checked by hand). Whole seconds;
+# 0 would turn blanking off. It reaches the kernel as a boot parameter, so a
+# change needs a reboot, which the role reports but never does.
+server_laptop_consoleblank: 60
+# A drop-in, so the packaged /etc/default/grub stays untouched.
+server_laptop_grub_defaults: /etc/default/grub
+server_laptop_grub_dropin_dir: /etc/default/grub.d
+server_laptop_grub_dropin: "{{ server_laptop_grub_dropin_dir }}/90-server-laptop.cfg"
+# What update-grub generates and the bootloader reads.
+server_laptop_grub_config: /boot/grub/grub.cfg
+# A kernel line in the generated config that carries the wanted value as a whole
+# word, so 6 does not satisfy 60.
+server_laptop_grub_config_pattern: "^[[:space:]]*linux[[:space:]].*[[:space:]]consoleblank={{ server_laptop_consoleblank }}([[:space:]]|$)"
+# What the running kernel is using.
+server_laptop_consoleblank_running: /sys/module/kernel/parameters/consoleblank
+
+# Preflight (tasks/preflight.yml): free MiB /boot must have for update-grub.
+# grub-mkconfig writes the whole new config to grub.cfg.new next to grub.cfg and
+# then copies it over, so the peak extra use is one grub.cfg (about 10 KiB on a
+# stock install, well under 1 MiB even with many kernels). 1 MiB is the smallest
+# value `df -m` can express, so this only catches a /boot that is full.
+server_laptop_preflight_min_boot_mib: 1

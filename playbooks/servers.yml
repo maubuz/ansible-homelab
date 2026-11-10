@@ -6,3 +6,12 @@
   become: false
   roles:
     - server
+
+# The one exception to "servers get only the server role": laptop servers are
+# push-only, so this play has no counterpart in local-server.yml. laptop_servers
+# is a child of servers, so these hosts have already had the play above.
+- name: Configure laptop servers
+  hosts: laptop_servers
+  become: false
+  roles:
+    - server_laptop

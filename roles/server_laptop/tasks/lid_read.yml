@@ -1,0 +1,19 @@
+---
+# What logind uses for the lid right now, whether or not this run wrote anything.
+# main.yml reads it to decide on a restart, verify.yml to assert, so the list of
+# properties lives only here.
+#
+# check_mode: false because a command task is skipped under --check, and the
+# tasks that read this register would then have no stdout to read.
+- name: Read the effective logind lid settings
+  ansible.builtin.command:
+    cmd: >-
+      busctl get-property org.freedesktop.login1 /org/freedesktop/login1
+      org.freedesktop.login1.Manager {{ item }}
+  loop:
+    - HandleLidSwitch
+    - HandleLidSwitchExternalPower
+    - HandleLidSwitchDocked
+  register: server_laptop_logind_effective
+  changed_when: false
+  check_mode: false

@@ -1,0 +1,4 @@
+# Managed by Ansible (role: server_laptop). Local edits will be overwritten.
+# Blank the text console after this many seconds without input. It applies from
+# the next boot.
+GRUB_CMDLINE_LINUX_DEFAULT="${GRUB_CMDLINE_LINUX_DEFAULT} consoleblank={{ server_laptop_consoleblank }}"

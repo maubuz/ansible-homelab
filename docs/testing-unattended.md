@@ -13,24 +13,23 @@ Throwaway keys are made inside the VM, and only their public halves reach `logs/
 
 ```sh
 t=scripts/test-vm.sh
-$t exec ssh-keygen -q -t ed25519 -N '' -f /home/ubuntu/test_a -C test-a
-$t exec ssh-keygen -q -t ed25519 -N '' -f /home/ubuntu/test_b -C test-b
-printf 'ansiblebot_keys:\n  - "%s"\n' "$($t exec cat /home/ubuntu/test_a.pub)" > logs/vm-keys-a.yml
+$t controller    # keys A and B, vm-inventory.ini, vm-keys-a.yml, vm-admin-user.yml, vm-admin.yml, vm-bot.yml
 printf 'ansiblebot_keys:\n  - "%s"\n  - "%s"\n' "$($t exec cat /home/ubuntu/test_a.pub)" \
   "$($t exec cat /home/ubuntu/test_b.pub)" > logs/vm-keys-ab.yml
-printf 'server_admin_user: ubuntu\n' > logs/vm-admin-user.yml
 printf 'server_syncthing_users:\n  - alice\n  - bob\n' > logs/vm-syncthing.yml
 for u in alice bob carol; do $t exec --root useradd -m $u; done
 ```
 
 `group_vars/all.yml` holds the real controller key, so the scenarios override it
 with `-e @logs/<file>` to get a key whose private half is in the VM.
-`server_admin_user` is `mau` there, which does not exist in the VM, so every
-`local-server` or `servers` run needs `-e @logs/vm-admin-user.yml`. Add
-`-e @logs/vm-syncthing.yml` to get the personal instances. Between scenarios, reset the account:
+`server_admin_user` is `mau` there, which does not exist in the VM, so a run of
+`server_syncthing` needs `-e @logs/vm-admin-user.yml` and `-e @logs/vm-syncthing.yml`
+(for the personal instances). The `server` role does not include `server_syncthing`,
+so the server scenarios do not need them; the `-e @logs/vm-admin-user.yml` in their
+commands is harmless. Between scenarios, reset the account:
 
 ```sh
-$t exec --root userdel -r ansiblebot; $t exec --root groupdel ansiblebot
+$t exec --root pkill -u ansiblebot; $t exec --root userdel -r ansiblebot; $t exec --root groupdel ansiblebot
 $t exec --root rm -f /etc/sudoers.d/ansiblebot
 ```
 
@@ -45,12 +44,38 @@ Run `$t run <playbook> -- <args>`; check with `$t exec`.
 | --- | --- | --- | --- |
 | A | A desktop's pull never creates the account | `local.yml -- -i localhost, -c local` | Converges. `getent passwd ansiblebot` exits 2; `/etc/sudoers.d/ansiblebot` is absent |
 | B | An empty key list is *red* | `local-server -- -i localhost, -c local -e '{"ansiblebot_keys": []}' -e @logs/vm-admin-user.yml` (JSON: `-e ansiblebot_keys=[]` passes the string `[]`) | Exits 2 at `ansiblebot : Check the required variables are set`; existing keys untouched |
-| H | A missing or unknown admin user, or an unknown user in `server_syncthing_users`, is *red*, and early | `local-server -- -i localhost, -c local` with `-e server_admin_user=` (empty), then `-e server_admin_user=nosuchuser`, then `-e @logs/vm-admin-user.yml -e '{"server_syncthing_users": ["nosuchuser"]}'` | Exits 2 at `server_syncthing`, naming the user, before NodeSource is touched (`grep -c nodesource` of the log is 0) |
+| H | A missing or unknown admin user, or an unknown user in `server_syncthing_users`, is *red* | The throwaway `logs/vm-st.yml` of S (`server_syncthing` alone), with `-e server_admin_user=` (empty), then `-e server_admin_user=nosuchuser`, then `-e @logs/vm-admin-user.yml -e '{"server_syncthing_users": ["nosuchuser"]}'` | Exits 2 at `server_syncthing`, naming the user |
 | C | A pull creates the account and the server tooling | `local-server -- -i localhost, -c local -e @logs/vm-keys-a.yml -e @logs/vm-admin-user.yml` | Converges, and the machine check below passes. `passwd -S ansiblebot` shows `L`, shell `/bin/bash`, `id` lists only its own group, `authorized_keys` holds exactly key A, `visudo -c` is clean, `sudo -l -U ansiblebot` shows `NOPASSWD: ALL`, the sudoers file is `440 root:root` |
 | D | Keys are exclusive | C with `vm-keys-ab.yml`, then with `vm-keys-a.yml` | After the first, A and B are authorized; after the second only A |
 | E | A legacy account is repaired | `exec --root useradd -r -m -G root -s /bin/sh ansiblebot` plus a stale key in its `authorized_keys`, then C | The root group is gone from `id`, the shell is `/bin/bash`, only key A remains |
 | F | The controller path | see below | Converges as `ansiblebot`; `sshd` logs `Accepted publickey for ansiblebot` |
-| P | A real pull | see below | `local.yml` creates no account; `local-server.yml` with keys and admin user converges; without the admin user, or with an empty key list, it is red as in H and B |
+| P | A real pull | see below | `local.yml` creates no account; `local-server.yml` with keys converges; with an empty key list it is red as in B |
+
+## LP: laptop preflight
+
+`playbooks/preflight-laptop-server.yml` is read-only and push only; the VM is its own
+controller, as in F. `$t controller laptop_servers` puts the VM in `[laptop_servers]` in
+`logs/vm-inventory.ini`; connect as `ansiblebot` (key A, which exists once the `server`
+role has run, as in F):
+
+```sh
+$t run --unattended preflight-laptop-server -- -i inventory.ini -i logs/vm-inventory.ini \
+  -e ansible_ssh_private_key_file=/home/ubuntu/test_a --limit 127.0.0.1
+```
+
+| # | Scenario | Green when |
+| --- | --- | --- |
+| LP1 | Fresh GRUB (remove `90-server-laptop.cfg`, then `update-grub`) | Passes, "adds consoleblank=60 to 3 linux line(s)"; a second run is `changed=0 failed=0` |
+| LP2 | Role already applied (run `server_laptop` first) | Passes, "the drop-in is already installed; it adds consoleblank=60 to 3 linux line(s)" |
+| LP3 | `consoleblank` appended to `/etc/default/grub` | Fails at "already sets consoleblank" |
+| LP4 | `update-grub` moved away | Fails at "update-grub is missing" |
+| LP5 | `-e server_laptop_consoleblank=abc` | Fails at "must be a whole number" |
+| LP6 | A second drop-in sets `consoleblank` | Passes with a warning naming the file |
+| LP7 | `grub.cfg` hand-edited | Passes with the drift warning |
+| LP8 | A drop-in with an unterminated quote | Fails at "does not match the intended change" (`before_rc` 2) |
+| LP9 | Checksums of `grub.cfg`, `/etc/default/grub`, the drop-ins and the directory mtimes before and after a run | Identical |
+| LP10 | Role applied with `-e server_laptop_consoleblank=30`, preflight with the default 60 | Passes (the installed drop-in is left out of the "before" run) |
+| LP11 | `--check` added to the preflight | Passes with the same report; nothing is skipped |
 
 ## C: machine check
 
@@ -62,7 +87,7 @@ The recap is not enough. As a fresh user with no profile (`$t exec --root userad
   the `nodesource` candidate.
 - `uv` is `/usr/local/bin/uv`, and `/opt/pipx` is root-owned and world-readable.
 - `snap list nordvpn nvim` shows both, `nvim` as `classic`.
-- `systemctl is-active syncthing@syncthing` is `active` and its process runs as `syncthing`; with `vm-syncthing.yml`, `syncthing@alice` and `@bob` run as themselves (`ps -o user= -C syncthing`). Details are in "S: Syncthing" below.
+- `systemctl list-unit-files 'syncthing@*'` is empty: the `server` role does not install Syncthing. Its checks are in "S: Syncthing" below.
 - `/etc/apt/sources.list.d/` holds `nodesource`, `wezterm` and `tailscale`
   `.sources` files.
 
@@ -94,11 +119,7 @@ The VM is both controller and target, over SSH to `127.0.0.1`. Key B plays the
 admin's key, key A the `ansiblebot` key.
 
 ```sh
-$t exec bash -c 'mkdir -p ~/.ssh && chmod 700 ~/.ssh && cat ~/test_b.pub >> ~/.ssh/authorized_keys \
-  && ssh -i ~/test_b -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new ubuntu@127.0.0.1 true'
-printf '[servers]\n127.0.0.1\n' > logs/vm-inventory.ini
-printf 'ansible_ssh_private_key_file: /home/ubuntu/test_b\n' > logs/vm-admin.yml
-printf 'ansible_ssh_private_key_file: /home/ubuntu/test_a\n' > logs/vm-bot.yml
+$t controller    # already done for the fixtures above; writes logs/vm-inventory.ini with [servers]
 inv="-i inventory.ini -i logs/vm-inventory.ini -e @logs/vm-keys-a.yml -e @logs/vm-admin-user.yml"
 
 # 1. First bootstrap as the admin (README step 4)
@@ -117,11 +138,11 @@ must still exit 2 for `servers` with no terminal and no `--unattended`:
 
 ## S: Syncthing
 
-The `server_syncthing` role has its own scenarios. To iterate on it without the
-whole `server` role, put `- hosts: all` / `become: false` / `roles: [server_syncthing]`
-in `logs/vm-st.yml` and run it inside the VM:
+The `server_syncthing` role has its own scenarios. No playbook applies it (the
+`server` role does not include it), so put `- hosts: all` / `become: false` /
+`roles: [server_syncthing]` in `logs/vm-st.yml` and run it inside the VM:
 `$t exec ansible-playbook -i localhost, -c local logs/vm-st.yml -e @logs/vm-admin-user.yml -e @logs/vm-syncthing.yml`.
-Always finish with the full C run, twice.
+Run it twice; the second run must be `changed=0`.
 
 | # | Scenario | Green when |
 | --- | --- | --- |
@@ -135,8 +156,8 @@ Always finish with the full C run, twice.
 | S8 | End to end | Pair `alice` with the system instance over `cli`. A file created in the shared folder reaches her; a local edit in her Receive Only folder does not flow back; `bob` never gets the folder; with trash-can versioning, a deletion from a Send & Receive share lands in `.stversions` |
 | S9 | Ports and reboot | Personal instances got ports other than `22000`. After `lxc restart ansible-test`, every instance is active and `journalctl -b -u 'syncthing@*' \| grep -ci 'address already in use'` is 0 |
 | S10 | Removal and legacy | `systemctl enable --now syncthing@ubuntu`, then run with only `bob` listed: `@ubuntu` and `@alice` are stopped and disabled, `~alice/.local/state/syncthing` is intact (check as root), and the next run is `changed=0` |
-| S11 | Fresh install | Purge `syncthing`, delete the `syncthing` user, group, `/srv/syncthing` and the drop-ins, then run C twice: the first-install path converges, `/var/lib/syncthing` has no `Sync` folder |
-| S12 | Entry points and regressions | F (controller) and P (real pull) converge twice with `vm-syncthing.yml` added; `$t run syncthing` (the user service) and `$t run desktop` still converge twice |
+| S11 | Fresh install | Purge `syncthing`, delete the `syncthing` user, group, `/srv/syncthing` and the drop-ins, then run `logs/vm-st.yml` twice: the first-install path converges, `/var/lib/syncthing` has no `Sync` folder |
+| S12 | Entry points and regressions | F (controller) and P (real pull) converge twice and leave no `syncthing@*` unit; `$t run syncthing` (the user service) and `$t run desktop` still converge twice |
 
 ## Cleanup
 

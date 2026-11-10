@@ -24,9 +24,12 @@ VMs live.
    repository directory, as `ubuntu` or as root, and returns its exit code
    (`exec getent passwd ansiblebot`, `exec --root visudo -c`).
 5. `git status`: the share is read-write, so a run can modify tracked files.
-6. `scripts/test-vm.sh destroy` when the session is done.
+6. `scripts/test-vm.sh reboot` restarts the VM and waits until it is back, for
+   what only a new boot applies (a kernel parameter such as `consoleblank`).
+7. `scripts/test-vm.sh destroy` when the session is done.
 
-Done means green on every step, for every playbook the change touches.
+Done means green on steps 1 to 5 for every playbook the change touches. Step 6
+is only for a change that needs a new boot to take effect.
 
 ## Facts the script does not tell you
 
@@ -51,7 +54,48 @@ Done means green on every step, for every playbook the change touches.
   snapd is unreliable in an unprivileged container. Sizing and its reasons are in
   the header of `scripts/test-vm.sh`.
 
+## Ansible and host gotchas
+
+Found by testing, and not visible in any config:
+
+- The `command` module runs `expandvars` over every `argv` item, so `$VAR` in a script
+  passed as an argument is rewritten before the shell sees it. Pass a script on
+  `stdin:` instead.
+- `ansible_check_mode` does not see a `check_mode: true` set on a play or task, only
+  `--check` on the command line. A role that gates tasks on it (`verify.yml`) still
+  runs them.
+- `template` and `copy` create `~/.ansible/tmp` on the target even in check mode.
+  `/tmp` and `~/.ansible/tmp` temp files count as read-only; anything else does not.
+- `/boot/efi` and `/boot/grub/grub.cfg` can be root-only (`0400`/`0700` on vfat), so a
+  `stat`, `slurp` or `fetch` of them needs `become: true`.
+- `sort` spills large inputs into `/tmp`, which changes `/tmp`'s mtime. Use
+  `sort -T /var/tmp` (not scanned) when a before and after listing is the evidence.
+- Fact gathering and a login can start `systemd-hostnamed` and a session scope, so
+  `/tmp`'s mtime, the mount count and the loaded unit count differ after any run.
+  They are not changes.
+
+## Proving a run changed nothing
+
+For a read-only playbook, list the files before and after and `diff`:
+
+```sh
+snap='find /etc /boot /usr /opt /srv /root /home /var/lib/dpkg /var/lib/apt /var/cache -xdev -not -path "/home/ubuntu/ansible-homelab/*" -printf "%p %T@ %s %m %u\n" | sort -T /var/tmp'
+t=scripts/test-vm.sh
+$t exec --root bash -c "$snap > /var/tmp/before"
+$t run <playbook>
+$t exec --root bash -c "$snap > /var/tmp/after; diff /var/tmp/before /var/tmp/after && echo IDENTICAL"
+```
+
+The listing and its scratch files live in `/var/tmp`, which it does not scan. Keep `snap` on one line: `exec` passes it through `eval`, which turns a newline into a
+second command. The connecting user's home directory mtime changes if Ansible made
+`~/.ansible`.
+
 ## Cannot be tested here
+
+The lid switch itself: the VM can show logind reporting `ignore` and the sleep
+targets masked, not that closing a real lid keeps the machine up. Likewise it can
+show the kernel running with `consoleblank=60` after a reboot, not that the panel
+goes dark (`docs/laptop-server.md`).
 
 Anything needing a desktop session: `playbooks/gnome.yml` and
 `installers/gnome-keybindings.sh` wait for a real machine.

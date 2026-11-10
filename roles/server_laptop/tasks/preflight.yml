@@ -1,0 +1,110 @@
+---
+# Read-only check, run before the first apply (playbooks/preflight-laptop-server.yml).
+# It reuses the role's own early assertions, then dry-runs the GRUB change and saves
+# a recovery baseline on the controller. It changes nothing on the host except
+# temporary files.
+- name: Run the role's own early checks (GRUB present, consoleblank free, value valid)
+  ansible.builtin.import_tasks: console_blank_preflight.yml
+
+- name: Measure free space on /boot
+  ansible.builtin.command: df --output=avail -m /boot
+  register: server_laptop_preflight_df
+  changed_when: false
+
+- name: Assert /boot has room for update-grub
+  ansible.builtin.assert:
+    that:
+      - server_laptop_preflight_df.stdout_lines[-1] | trim | int >= server_laptop_preflight_min_boot_mib | int
+    fail_msg: >-
+      /boot has {{ server_laptop_preflight_df.stdout_lines[-1] | trim }} MiB free,
+      less than {{ server_laptop_preflight_min_boot_mib }}.
+    quiet: true
+
+- name: Look for the role's own drop-in (already installed?)
+  ansible.builtin.stat:
+    path: "{{ server_laptop_grub_dropin }}"
+  register: server_laptop_preflight_own_dropin
+
+# What grub-mkconfig would produce with and without the role's drop-in, rendered
+# from the role's own template. See files/grub-dry-run.sh.
+- name: Dry-run the GRUB change in a private mount namespace
+  become: true
+  ansible.builtin.command:
+    argv: [unshare, -m, --propagation, private, sh, -s]
+    stdin: "{{ lookup('ansible.builtin.file', 'grub-dry-run.sh') }}"
+  environment:
+    PREFLIGHT_DROPIN_NAME: "{{ server_laptop_grub_dropin | basename }}"
+    PREFLIGHT_N: "{{ server_laptop_consoleblank }}"
+    PREFLIGHT_GRUB_DROPIN_DIR: "{{ server_laptop_grub_dropin_dir }}"
+    PREFLIGHT_GRUB_CONFIG: "{{ server_laptop_grub_config }}"
+    PREFLIGHT_DROPIN: "{{ lookup('ansible.builtin.template', 'grub-consoleblank.cfg.j2') | trim }}"
+  register: server_laptop_preflight_dryrun
+  changed_when: false
+
+- name: Read the dry run's results
+  ansible.builtin.set_fact:
+    server_laptop_preflight_dr: >-
+      {{ dict(server_laptop_preflight_dryrun.stdout | regex_findall('(?m)^RESULT (\w+)=(.*)$')) }}
+
+- name: Assert the dry run produces exactly the intended change
+  ansible.builtin.assert:
+    that:
+      - server_laptop_preflight_dr.bind_failed is not defined
+      - server_laptop_preflight_dr.current_rc | default('0') == '0'
+      - server_laptop_preflight_dr.before_rc == '0'
+      - server_laptop_preflight_dr.after_rc == '0'
+      - server_laptop_preflight_dr.check_rc == '0'
+      - server_laptop_preflight_dr.linux_lines | int > 0
+      - server_laptop_preflight_dr.unexpected_lines == '0'
+    fail_msg: >-
+      The GRUB dry run does not match the intended change
+      ({{ server_laptop_preflight_dr }}). See the diffs below.
+    quiet: true
+
+- name: Create the evidence directory on the controller
+  delegate_to: localhost
+  become: false
+  ansible.builtin.file:
+    path: "{{ playbook_dir | dirname }}/logs/preflight-{{ inventory_hostname }}-{{ now(utc=true, fmt='%Y%m%d-%H%M%S') }}"
+    state: directory
+    mode: "0700"
+  register: server_laptop_preflight_dir
+  changed_when: false
+
+- name: Save the dry-run output and the recovery baseline on the controller
+  delegate_to: localhost
+  become: false
+  ansible.builtin.copy:
+    content: "{{ server_laptop_preflight_dryrun.stdout }}"
+    dest: "{{ server_laptop_preflight_dir.path }}/grub-dry-run.txt"
+    mode: "0600"
+  changed_when: false
+
+- name: Find the GRUB drop-ins to save
+  ansible.builtin.find:
+    paths: "{{ server_laptop_grub_dropin_dir }}"
+    patterns: "*.cfg"
+  register: server_laptop_preflight_dropins
+
+- name: Fetch the GRUB files (the recovery baseline)
+  become: true
+  ansible.builtin.fetch:
+    src: "{{ item }}"
+    dest: "{{ server_laptop_preflight_dir.path }}/files{{ item }}"
+    flat: true
+  loop: "{{ [server_laptop_grub_defaults, server_laptop_grub_config] + (server_laptop_preflight_dropins.files | map(attribute='path') | list) }}"
+  changed_when: false
+
+- name: Report
+  ansible.builtin.debug:
+    msg:
+      - >-
+        Preflight OK for {{ inventory_hostname }}:
+        {{ 'the drop-in is already installed; ' if server_laptop_preflight_own_dropin.stat.exists else '' }}it
+        adds consoleblank={{ server_laptop_consoleblank }} to {{ server_laptop_preflight_dr.changed_lines }}
+        linux line(s) and changes nothing else.
+      - >-
+        {{ 'WARNING: grub.cfg is out of date, update-grub will also apply ' ~ server_laptop_preflight_dr.drift_lines ~
+           ' diff line(s) of drift (a hand edit or a new kernel); see grub-dry-run.txt.'
+           if server_laptop_preflight_dr.drift_lines != '0' else 'grub.cfg is current: update-grub changes nothing else.' }}
+      - "Recovery baseline and diffs: {{ server_laptop_preflight_dir.path }}"

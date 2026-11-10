@@ -22,6 +22,8 @@
 #   scripts/test-vm.sh start               # boot it again if it is stopped
 #   scripts/test-vm.sh run <playbook> [args]   # run a playbook inside it
 #   scripts/test-vm.sh exec [--root] <cmd...>  # run a command in it, to verify
+#   scripts/test-vm.sh reboot              # restart it and wait until it is back
+#   scripts/test-vm.sh controller [group]  # let the VM reach itself over SSH (default group: servers)
 #   scripts/test-vm.sh shell               # interactive shell in the VM
 #   scripts/test-vm.sh status              # is it running?
 #   scripts/test-vm.sh destroy             # delete it
@@ -230,6 +232,40 @@ cmd_start() {
   echo "$VM is running"
 }
 
+# The fixtures for the controller path (docs/testing-unattended.md, scenario F):
+# the VM is both controller and target, over SSH to 127.0.0.1. Key A plays the
+# ansiblebot key, key B the admin's. Idempotent. Public keys and the test
+# inventory land in the gitignored logs/; private keys stay in the VM.
+cmd_controller() {
+  local group=${1:-servers} pub_a
+  [[ $group =~ ^[a-z_]+$ ]] || die "group must be lowercase letters and underscores, e.g. laptop_servers"
+  require_vm
+  # One line with explicit separators: vm_user_sh evals it through a backtick
+  # substitution, which turns newlines into spaces.
+  vm_user_sh 'for k in test_a test_b; do [ -f ~/$k ] || ssh-keygen -q -t ed25519 -N "" -f ~/$k -C $k; done;
+    mkdir -p ~/.ssh; chmod 700 ~/.ssh;
+    grep -qF "$(cut -d" " -f2 ~/test_b.pub)" ~/.ssh/authorized_keys 2>/dev/null || cat ~/test_b.pub >> ~/.ssh/authorized_keys;
+    ssh -i ~/test_b -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new ubuntu@127.0.0.1 true'
+  pub_a=$(vm_user_sh 'cat ~/test_a.pub')
+  mkdir -p logs
+  printf '[%s]\n127.0.0.1\n' "$group" > logs/vm-inventory.ini
+  printf 'ansiblebot_keys:\n  - "%s"\n' "$pub_a" > logs/vm-keys-a.yml
+  printf 'server_admin_user: ubuntu\n' > logs/vm-admin-user.yml
+  printf 'ansible_user: ubuntu\nansible_ssh_private_key_file: /home/ubuntu/test_b\n' > logs/vm-admin.yml
+  printf 'ansible_ssh_private_key_file: /home/ubuntu/test_a\n' > logs/vm-bot.yml
+  echo "==> Controller fixtures ready in logs/ (vm-inventory.ini has [$group] 127.0.0.1)"
+}
+
+# A real reboot, for what only a new boot applies (kernel parameters). Waits for
+# the agent and for cloud-init, as create does, so the next command is safe.
+cmd_reboot() {
+  require_vm
+  lxc_ restart "$VM" </dev/null
+  wait_for_agent
+  vm_root cloud-init status --wait
+  echo "$VM rebooted"
+}
+
 cmd_shell() {
   require_vm
   lxc_ exec "$VM" -- sudo -iu ubuntu
@@ -258,6 +294,8 @@ case "$command" in
   start) cmd_start "$@" ;;
   run) cmd_run "$@" ;;
   exec) cmd_exec "$@" ;;
+  reboot) cmd_reboot "$@" ;;
+  controller) cmd_controller "$@" ;;
   shell) cmd_shell "$@" ;;
   status) cmd_status "$@" ;;
   destroy) cmd_destroy "$@" ;;
